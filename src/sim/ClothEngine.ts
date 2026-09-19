@@ -61,6 +61,8 @@ export class ClothEngine {
 	frameN = 0;
 	partyShown = false;
 	firstTearFired = false;
+	/** seconds; tip dismiss only after recent canvas input (AC-02) */
+	lastInputAt = Number.NEGATIVE_INFINITY;
 
 	ptr = { x: 0, y: 0, px: 0, py: 0, down: false, id: -1, vx: 0, vy: 0, lastT: 0 };
 	grabList: Grab[] = [];
@@ -622,7 +624,11 @@ export class ClothEngine {
 			else if (this.mat.id === "mail") {
 				for (let i = 0; i < Math.min(3, this.breaksTear); i++) sfx.tinkSnd();
 			} else if (sfx.tryBudget()) sfx.ripSnd(v, this.mat.sndF, this.mat.sndD);
-			if (!this.firstTearFired) {
+			// Tip dismiss: only user-driven tears (ptr down or input within 0.8s) — not ambient settle/wind
+			if (
+				!this.firstTearFired &&
+				(this.ptr.down || this.time - this.lastInputAt < 0.8)
+			) {
 				this.firstTearFired = true;
 				this.cb.onFirstTear?.();
 			}
@@ -957,6 +963,7 @@ export class ClothEngine {
 			void sfx.resumeAudio();
 			if (this.ptr.down) return;
 			this.ptr.down = true;
+			this.lastInputAt = this.time;
 			this.ptr.id = e.pointerId;
 			const r = cv.getBoundingClientRect();
 			this.ptr.x = e.clientX - r.left;
