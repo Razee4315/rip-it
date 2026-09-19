@@ -127,6 +127,7 @@ function App() {
 					<Hud
 						destroyed={stats.destroyed}
 						pieces={stats.pieces}
+						fibers={stats.fibers}
 						fps={stats.fps}
 						showTip={showTip}
 						onOpenWorld={() => setSheet("world")}

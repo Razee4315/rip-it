@@ -38,10 +38,13 @@ const Brand = styled.div`
 
 const Stats = styled.div`
 	display: flex;
-	gap: 10px;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 6px 10px;
 	font-size: 11px;
 	color: ${tokens.colors.text.secondary};
 	pointer-events: none;
+	max-width: min(420px, 52vw);
 
 	b {
 		color: ${tokens.colors.text.primary};
@@ -104,13 +107,14 @@ const Legend = styled.div`
 type Props = {
 	destroyed: number;
 	pieces: number;
+	fibers: number;
 	fps: number;
 	showTip: boolean;
 	onOpenWorld: () => void;
 	onDismissTip: () => void;
 };
 
-export function Hud({ destroyed, pieces, fps, showTip, onOpenWorld, onDismissTip }: Props) {
+export function Hud({ destroyed, pieces, fibers, fps, showTip, onOpenWorld, onDismissTip }: Props) {
 	return (
 		<>
 			<Top>
@@ -124,6 +128,9 @@ export function Hud({ destroyed, pieces, fps, showTip, onOpenWorld, onDismissTip
 					</span>
 					<span>
 						Pieces <b>{pieces}</b>
+					</span>
+					<span>
+						Fibres <b>{fibers}</b>
 					</span>
 					<span>
 						FPS <b>{fps || "–"}</b>
