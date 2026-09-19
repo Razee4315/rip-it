@@ -90,7 +90,8 @@ export const tokens = {
 	zIndex: { base: 0, dock: 100, sheet: 200, modal: 300, toast: 400 },
 	breakpoints: { mobile: 640, tablet: 1024, desktop: 1280 },
 	layout: {
-		asideWidthPx: 256,
+		/** Desktop + mobile: dock + sheets (AC-07 amended dock-everywhere) */
+		chrome: "dock",
 		safeAreaPadding: true,
 	},
 } as const;

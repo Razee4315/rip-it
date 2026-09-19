@@ -123,8 +123,9 @@ const Row = styled.div`
 
 const Btn = styled.button<{ $on?: boolean }>`
 	flex: 1;
-	min-height: 44px;
-	padding: 8px;
+	min-width: ${tokens.touch.minTargetPx}px;
+	min-height: ${tokens.touch.minTargetPx}px;
+	padding: 10px 8px;
 	border-radius: 8px;
 	border: 1px solid
 		${({ $on }) => ($on ? tokens.colors.primary : tokens.colors.border.default)};
@@ -139,6 +140,15 @@ const Btn = styled.button<{ $on?: boolean }>`
 	justify-content: center;
 	gap: 6px;
 	white-space: nowrap;
+	box-sizing: border-box;
+`;
+
+/** Icon+label mute — never shrink below AC-11 44×44 */
+const MuteBtn = styled(Btn)`
+	flex: 0 0 auto;
+	min-width: ${tokens.touch.minTargetPx}px;
+	min-height: ${tokens.touch.minTargetPx}px;
+	padding: 10px 12px;
 `;
 
 type Props = {
@@ -233,14 +243,15 @@ export function Sheet(props: Props) {
 							<Btn type="button" $on={props.slowmo} onClick={props.onSlowmo}>
 								<IconSlow size={16} /> Slow-mo
 							</Btn>
-							<Btn
+							<MuteBtn
 								type="button"
 								$on={props.muted}
 								onClick={props.onMute}
 								aria-label={props.muted ? "Unmute" : "Mute"}
 							>
 								{props.muted ? <IconSpeakerOff size={18} /> : <IconSpeaker size={18} />}
-							</Btn>
+								{props.muted ? "Unmute" : "Mute"}
+							</MuteBtn>
 						</Row>
 						<Row>
 							<Btn
