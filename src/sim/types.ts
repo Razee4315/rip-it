@@ -45,9 +45,6 @@ export type GameStats = {
 	burning: number;
 };
 
-/** First-time player actions the tip ladder hooks into. */
-export type Milestone = "tear" | "cut" | "burn";
-
 /** Recap payload fired when the cloth is fully shredded. */
 export type PartyPayload = {
 	fibers: number;

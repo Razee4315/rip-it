@@ -13,7 +13,8 @@ const Dock = styled.nav`
 	justify-content: center;
 	gap: 6px;
 	padding: 8px 12px;
-	padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+	/* lifted clear of the gesture bar so fallen cloth stays visible above the icons */
+	padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 12px));
 	padding-left: max(12px, env(safe-area-inset-left, 0px));
 	padding-right: max(12px, env(safe-area-inset-right, 0px));
 	background: linear-gradient(180deg, transparent, rgba(8, 9, 12, 0.85) 40%);

@@ -1,6 +1,6 @@
 import { ClothEngine } from "@/sim/ClothEngine";
 import type { ToolId } from "@/sim/tools";
-import type { GameStats, Milestone, PartyPayload } from "@/sim/types";
+import type { GameStats, PartyPayload } from "@/sim/types";
 import { type MutableRefObject, useEffect, useRef } from "react";
 import styled from "styled-components";
 
@@ -29,9 +29,7 @@ type Props = {
 	muted: boolean;
 	resetKey: number;
 	onStats: (s: GameStats) => void;
-	onMilestone: (m: Milestone) => void;
 	onParty: (p: PartyPayload | null) => void;
-	onIdle: () => void;
 	engineRef: MutableRefObject<ClothEngine | null>;
 };
 
@@ -44,9 +42,7 @@ export function GameCanvas({
 	muted,
 	resetKey,
 	onStats,
-	onMilestone,
 	onParty,
-	onIdle,
 	engineRef,
 }: Props) {
 	const wrapRef = useRef<HTMLDivElement>(null);
@@ -58,9 +54,7 @@ export function GameCanvas({
 		if (!wrap || !cv) return;
 		const engine = new ClothEngine(cv, {
 			onStats,
-			onMilestone,
 			onParty,
-			onIdle,
 		});
 		engineRef.current = engine;
 		engine.mount(wrap);

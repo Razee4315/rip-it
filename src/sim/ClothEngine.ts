@@ -3,20 +3,17 @@ import { haptic } from "@/lib/haptics";
 import { type Material, getMaterial } from "./materials";
 import { TAU, clamp, lerp, rand } from "./math";
 import type { ToolId } from "./tools";
-import type { Constraint, GameStats, Milestone, Particle, PartyPayload, Tri } from "./types";
+import type { Constraint, GameStats, Particle, PartyPayload, Tri } from "./types";
 
 export type EngineCallbacks = {
 	onStats?: (s: GameStats) => void;
-	/** First tear / cut / burn per cloth — drives the tip ladder. */
-	onMilestone?: (m: Milestone) => void;
 	/** Party recap payload, or null when a fresh cloth closes it. */
 	onParty?: (p: PartyPayload | null) => void;
-	/** Fired once per cloth after IDLE_AFTER_S without input. */
-	onIdle?: () => void;
 };
 
-const IDLE_AFTER_S = 20;
-const GHOST_HINT_MAX_AGE_S = 12;
+const WARM_STEPS = 75;
+/** Seconds after build where the tear threshold is extra forgiving (residual wobble) */
+const WARM_GRACE_S = 3;
 
 type Grab = { p: Particle; ox: number; oy: number; w: number; pri: boolean };
 
@@ -42,6 +39,9 @@ export class ClothEngine {
 	windAmp = 0.12;
 	gravMul = 1;
 	slowmo = false;
+	/** phone/touch shell — rod drops below the top bar, floor stays above the dock */
+	touchShell =
+		typeof document !== "undefined" && document.documentElement.classList.contains("touch");
 
 	time = 0;
 	shake = 0;
@@ -68,14 +68,12 @@ export class ClothEngine {
 	pieces = 1;
 	frameN = 0;
 	partyShown = false;
-	firstTearFired = false;
-	firstCutFired = false;
-	firstBurnFired = false;
-	idleFired = false;
-	/** seconds; tip dismiss only after recent canvas input (AC-02) */
+	/** seconds; last user input on the canvas (AC-02) */
 	lastInputAt = Number.NEGATIVE_INFINITY;
 	/** hit-freeze seconds — micro pause that sells big rips */
 	hitstop = 0;
+	/** remaining settle steps after build (no tearing, stiffer solving) */
+	warm = 0;
 	/** cloth fill-in ramp after build (0→1) */
 	spawnT = 1;
 	/** this.time at last buildCloth — drives ghost hint age + party seconds */
@@ -204,7 +202,10 @@ export class ClothEngine {
 		this.cv.height = Math.round(this.H * this.DPR);
 		this.cv.style.width = `${this.W}px`;
 		this.cv.style.height = `${this.H}px`;
-		this.floorY = this.H - 30;
+		// Touch: hang the rod clear of the brand/gear bar, keep the floor above the dock
+		this.touchShell = document.documentElement.classList.contains("touch");
+		this.rodY = this.touchShell ? 96 : 52;
+		this.floorY = this.H - (this.touchShell ? 112 : 30);
 		this.makeBg();
 		this.makeVignette();
 		this.makeGlow();
@@ -307,13 +308,10 @@ export class ClothEngine {
 		this.lastBurningN = 0;
 		this.partyShown = false;
 		this.shake = 0;
-		this.firstTearFired = false;
-		this.firstCutFired = false;
-		this.firstBurnFired = false;
-		this.idleFired = false;
 		this.hitstop = 0;
 		this.spawnT = 0;
 		this.builtAt = this.time;
+		this.warm = WARM_STEPS;
 		this.cb.onParty?.(null);
 
 		const { W, H, rodY } = this;
@@ -321,7 +319,9 @@ export class ClothEngine {
 		const targetS = 16 * this.mat.spMul;
 		this.cols = clamp(Math.round(clothW / targetS), 24, 46);
 		this.S = clothW / this.cols;
-		this.rows = clamp(Math.round(Math.min(H * 0.52, 460) / this.S), 14, 32);
+		// Never spawn into the floor (matters on short touch screens)
+		const maxH = Math.min(H * 0.52, 460, H - rodY - 10 - (this.touchShell ? 118 : 34));
+		this.rows = clamp(Math.round(maxH / this.S), 10, 32);
 		const x0 = (W - this.S * this.cols) / 2;
 		const y0 = rodY + 10;
 		const { cols, rows, S } = this;
@@ -432,7 +432,7 @@ export class ClothEngine {
 		this.windStreaks = [];
 		for (let i = 0; i < 16; i++)
 			this.windStreaks.push({ x: rand(0, W), y: rand(0, H), l: rand(30, 90), a: rand(0.03, 0.08) });
-		for (let k = 0; k < 45; k++) this.step(1 / 60);
+		for (let k = 0; k < WARM_STEPS; k++) this.step(1 / 60);
 		this.fibers = [];
 		this.embers = [];
 		this.smokes = [];
@@ -494,7 +494,10 @@ export class ClothEngine {
 		if (c.type > 1) return 1 + (this.mat.tear - 1) * 1.45;
 		const p = this.parts[c.a],
 			q = this.parts[c.b];
-		return (1 + (this.mat.tear - 1) * c.dmg) * (1 - (p.wet + q.wet) * 0.14);
+		// Settle grace: extra forgiving right after spawn so wobble can't self-shred the cloth
+		const age = this.time - this.builtAt;
+		const grace = age < WARM_GRACE_S ? 1 + 0.8 * (1 - age / WARM_GRACE_S) : 1;
+		return (1 + (this.mat.tear - 1) * c.dmg) * (1 - (p.wet + q.wet) * 0.14) * grace;
 	}
 	private stressOf(c: Constraint) {
 		const p = this.parts[c.a],
@@ -567,7 +570,9 @@ export class ClothEngine {
 				p.y += (ty - p.y) * k;
 			}
 		}
-		const it = this.mat.iters;
+		const warming = this.warm > 0;
+	if (warming) this.warm--;
+	const it = warming ? this.mat.iters * 2 + 2 : this.mat.iters;
 		for (let n = 0; n < it; n++) {
 			for (let k = 0; k < this.cons.length; k++) {
 				const c = this.cons[k];
@@ -623,6 +628,8 @@ export class ClothEngine {
 	}
 
 	private tearPass(dt: number) {
+		// Settling after spawn: never self-tear while the cloth finds its hang
+		if (this.warm > 0) return;
 		this.breaksTear = 0;
 		let creak = false;
 		for (let k = 0; k < this.cons.length; k++) {
@@ -630,6 +637,9 @@ export class ClothEngine {
 			if (c.broken || c.type > 3) continue;
 			const p = this.parts[c.a],
 				q = this.parts[c.b];
+			// Rod mounts never stretch-tear — the cloth only leaves the rod on purpose
+			// (pin tool unclip, scissors/knife cut, burn). Kills the spawn self-shred bug.
+			if ((p.pin && p.rodPin) || (q.pin && q.rodPin)) continue;
 			const rest = c.rest > 1e-6 ? c.rest : 1e-6;
 			const d = Math.hypot(q.x - p.x, q.y - p.y);
 			if (d > rest * 5.5) {
@@ -656,11 +666,6 @@ export class ClothEngine {
 				haptic([10, 26, 14]);
 			} else {
 				haptic(8);
-			}
-			// Tip ladder: first tear milestone, only user-driven (ptr down or input within 0.8s)
-			if (!this.firstTearFired && (this.ptr.down || this.time - this.lastInputAt < 0.8)) {
-				this.firstTearFired = true;
-				this.cb.onMilestone?.("tear");
 			}
 		}
 		if (creak && this.tool === "hand" && this.ptr.down && Math.random() < 0.12) sfx.creakSnd();
@@ -755,19 +760,6 @@ export class ClothEngine {
 			this.addFray(p, ang, true, 4);
 			this.addFray(q, ang + Math.PI, true, 4);
 			if (this.mat.render === "mail") this.spawnSparks(mx, my, 3);
-		}
-	}
-
-	private markCut() {
-		if (!this.firstCutFired) {
-			this.firstCutFired = true;
-			this.cb.onMilestone?.("cut");
-		}
-	}
-	private markBurn() {
-		if (!this.firstBurnFired) {
-			this.firstBurnFired = true;
-			this.cb.onMilestone?.("burn");
 		}
 	}
 
@@ -1101,7 +1093,6 @@ export class ClothEngine {
 				const n = this.cutSeg(x - 5, y, x + 5, y, 5, "cut");
 				if (n) {
 					this.snipT = 1;
-					this.markCut();
 					if (performance.now() - this.lastSnipSnd > 60) {
 						sfx.snipSnd();
 						this.lastSnipSnd = performance.now();
@@ -1153,7 +1144,6 @@ export class ClothEngine {
 					this.lastCutY = y;
 					if (n) {
 						this.snipT = 1;
-						this.markCut();
 						if (performance.now() - this.lastSnipSnd > 60) {
 							sfx.snipSnd();
 							this.lastSnipSnd = performance.now();
@@ -1177,7 +1167,6 @@ export class ClothEngine {
 					);
 					if (n) {
 						this.spawnSlash(this.ptr.px, this.ptr.py, x, y);
-						this.markCut();
 						if (performance.now() - this.lastSnipSnd > 90) {
 							sfx.whooshSnd(sp / 2500);
 							this.lastSnipSnd = performance.now();
@@ -1245,7 +1234,6 @@ export class ClothEngine {
 						p.burn = true;
 						p.burnT = 0;
 						lit++;
-						this.markBurn();
 						if (lit > 14) break;
 					}
 				}
@@ -1341,7 +1329,6 @@ export class ClothEngine {
 		this.renderFrays();
 		this.renderPins();
 		if (fill < 1) ctx.globalAlpha = 1;
-		if (!this.firstTearFired && this.spawnT >= 1) this.drawGhostPinch();
 		this.renderFX();
 		ctx.restore();
 		if (this.vigCv) ctx.drawImage(this.vigCv, 0, 0, W, H);
@@ -1587,34 +1574,6 @@ export class ClothEngine {
 		ctx.lineCap = "butt";
 	}
 
-	/** Cold-open hook: pulsing pinch hint on the cloth until the first user tear. No auto-demo rip. */
-	private drawGhostPinch() {
-		const age = this.time - this.builtAt;
-		if (age > GHOST_HINT_MAX_AGE_S) return;
-		const p = this.parts[this.idx(this.cols >> 1, ((this.rows * 0.42) | 0) + 1)];
-		if (!p || p.pin) return;
-		const ctx = this.ctx;
-		const fade = age < 8 ? 1 : Math.max(0, 1 - (age - 8) / (GHOST_HINT_MAX_AGE_S - 8));
-		const pinch = Math.sin(((age % 1.7) / 1.7) * Math.PI);
-		const a = fade * (0.38 - 0.14 * pinch);
-		const r = 24 - pinch * 9;
-		ctx.save();
-		ctx.translate(p.x, p.y);
-		ctx.strokeStyle = `rgba(232,161,58,${a})`;
-		ctx.lineWidth = 2;
-		ctx.beginPath();
-		ctx.arc(0, 0, r, 0, TAU);
-		ctx.stroke();
-		const gap = r + 7 - pinch * 5;
-		ctx.fillStyle = `rgba(232,161,58,${a * 0.75})`;
-		for (const s of [-1, 1]) {
-			ctx.beginPath();
-			ctx.arc(0, s * gap, 3, 0, TAU);
-			ctx.fill();
-		}
-		ctx.restore();
-	}
-
 	private drawCursor() {
 		const ctx = this.ctx;
 		const x = this.ptr.x,
@@ -1821,16 +1780,6 @@ export class ClothEngine {
 			}
 		}
 		this.frameN++;
-		if (
-			!this.idleFired &&
-			!this.partyShown &&
-			this.spawnT >= 1 &&
-			this.time - this.builtAt > 5 &&
-			this.time - this.lastInputAt > IDLE_AFTER_S
-		) {
-			this.idleFired = true;
-			this.cb.onIdle?.();
-		}
 		if (this.frameN % 20 === 0) this.pieces = this.countPieces();
 		if (now - this.lastStats > 250) {
 			this.lastStats = now;

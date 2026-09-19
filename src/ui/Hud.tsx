@@ -1,5 +1,4 @@
 import { tokens } from "@/theme/tokens";
-import { keyframes } from "styled-components";
 import styled from "styled-components";
 import { IconLogo, IconSliders } from "./icons";
 
@@ -51,64 +50,6 @@ const Gear = styled.button`
 	justify-content: center;
 `;
 
-const tipPulse = keyframes`
-	0%, 100% { transform: translateX(-50%) scale(1); box-shadow: ${tokens.shadows.glow.primary}; }
-	50% { transform: translateX(-50%) scale(1.045); box-shadow: ${tokens.shadows.glow.primary}, 0 0 22px rgba(232, 161, 58, 0.35); }
-`;
-
-const Tip = styled.button`
-	position: absolute;
-	left: 50%;
-	bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 72px));
-	top: auto;
-	transform: translateX(-50%);
-	z-index: ${tokens.zIndex.toast};
-	min-height: ${tokens.touch.minTargetPx}px;
-	padding: 10px 16px;
-	border-radius: 999px;
-	background: rgba(22, 26, 34, 0.95);
-	border: 1px solid ${tokens.colors.border.party};
-	box-shadow: ${tokens.shadows.glow.primary};
-	color: ${tokens.colors.text.primary};
-	font: inherit;
-	font-size: 13px;
-	font-weight: 600;
-	letter-spacing: 0.2px;
-	cursor: pointer;
-	pointer-events: auto;
-	white-space: nowrap;
-	animation: ${tipPulse} 2.2s ease-in-out infinite;
-`;
-
-const toastIn = keyframes`
-	from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
-	to { opacity: 1; transform: translateX(-50%) translateY(0); }
-`;
-
-const Toast = styled.div`
-	position: absolute;
-	left: 50%;
-	top: max(60px, calc(env(safe-area-inset-top, 0px) + 52px));
-	transform: translateX(-50%);
-	z-index: ${tokens.zIndex.toast};
-	min-height: 36px;
-	padding: 8px 14px;
-	border-radius: 999px;
-	background: rgba(22, 26, 34, 0.92);
-	border: 1px solid ${tokens.colors.border.default};
-	color: ${tokens.colors.text.secondary};
-	font: inherit;
-	font-size: 12.5px;
-	font-weight: 500;
-	letter-spacing: 0.2px;
-	pointer-events: none;
-	white-space: nowrap;
-	max-width: calc(100% - 24px);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	animation: ${toastIn} 0.22s ease-out;
-`;
-
 const Legend = styled.div`
 	position: absolute;
 	left: 12px;
@@ -124,14 +65,11 @@ const Legend = styled.div`
 `;
 
 type Props = {
-	tip: string | null;
-	toast: string | null;
 	onOpenWorld: () => void;
-	onDismissTip: () => void;
 };
 
-/** Play chrome only — stats live in World sheet (fun pass). */
-export function Hud({ tip, toast, onOpenWorld, onDismissTip }: Props) {
+/** Play chrome only — brand + settings. Stats live in World sheet. */
+export function Hud({ onOpenWorld }: Props) {
 	return (
 		<>
 			<Top>
@@ -143,16 +81,6 @@ export function Hud({ tip, toast, onOpenWorld, onDismissTip }: Props) {
 					<IconSliders size={20} />
 				</Gear>
 			</Top>
-			{tip && (
-				<Tip type="button" role="status" onClick={onDismissTip} aria-label={tip}>
-					{tip}
-				</Tip>
-			)}
-			{toast && (
-				<Toast role="status" aria-live="polite">
-					{toast}
-				</Toast>
-			)}
 			<Legend>1–8 tools · R fresh cloth · S slow-mo · M mute</Legend>
 		</>
 	);

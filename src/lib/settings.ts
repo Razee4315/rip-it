@@ -6,17 +6,17 @@ export type RipSettings = {
 	gravity: number;
 	matId: string;
 	tool: string;
-	tutored: boolean;
 };
 
 const KEY = "rip-it-settings";
 const DEFAULTS: RipSettings = {
 	muted: false,
 	wind: 0.12,
-	gravity: 1,
-	matId: "silk",
+	// gentle — the cloth should float and sag, not slam
+	gravity: 0.8,
+	// cotton, like the original prototype — silk can't hold its own weight at spawn
+	matId: "cotton",
 	tool: "hand",
-	tutored: false,
 };
 
 function isTauri(): boolean {
