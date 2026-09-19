@@ -9,7 +9,7 @@ export type ToolDef = {
 	dock?: "primary" | "overflow";
 };
 
-/** Primary dock: Hand / Scissors / Torch / Water. Knife+ in overflow. */
+/** Primary dock: Hand / Scissors / Knife / Torch / Water. Overflow: Pin / Sew / Blower. */
 export const TOOLS: ToolDef[] = [
 	{
 		id: "hand",
@@ -28,6 +28,14 @@ export const TOOLS: ToolDef[] = [
 		dock: "primary",
 	},
 	{
+		id: "knife",
+		icon: "knife",
+		name: "Knife",
+		key: "3",
+		tip: "SLASH fast to cut. Slow moves just nudge the fabric.",
+		dock: "primary",
+	},
+	{
 		id: "torch",
 		icon: "torch",
 		name: "Torch",
@@ -42,14 +50,6 @@ export const TOOLS: ToolDef[] = [
 		key: "5",
 		tip: "Soak it: heavier, sags, tears easier, fire-proof.",
 		dock: "primary",
-	},
-	{
-		id: "knife",
-		icon: "knife",
-		name: "Knife",
-		key: "3",
-		tip: "SLASH fast to cut. Slow moves just nudge the fabric.",
-		dock: "overflow",
 	},
 	{
 		id: "pin",
