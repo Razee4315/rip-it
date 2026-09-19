@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/capabilities.json",
+  "identifier": "main-capability",
+  "description": "Desktop capability for the main window",
+  "platforms": ["linux", "macOS", "windows"],
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:app:default",
+    "opener:default",
+    "store:default"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/capabilities.json",
+  "identifier": "mobile-capability",
+  "description": "Mobile capability for the main window",
+  "platforms": ["android", "iOS"],
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:app:default",
+    "opener:default",
+    "store:default"
+  ]
+}

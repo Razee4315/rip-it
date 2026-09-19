@@ -1,0 +1,18 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  # Full desktop/Android release pipeline is owned by rip-ci.
+  # Stub keeps the workflow present without heavy matrix builds.
+
+permissions:
+  contents: write
+
+jobs:
+  note:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release stub
+        run: |
+          echo "Release builds (desktop installers + Android APK) are handled by rip-ci."
+          echo "Trigger a full release workflow once signing secrets and android init patches are ready."
