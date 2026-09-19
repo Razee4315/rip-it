@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <!-- Full-bleed adaptive background -->
+  <rect width="1024" height="1024" fill="#0c0e12"/>
+  <!-- Soft radial glow (safe-zone friendly) -->
+  <defs>
+    <radialGradient id="g" cx="50%" cy="48%" r="42%">
+      <stop offset="0%" stop-color="#e8a13a" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#e8a13a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="512" cy="492" r="360" fill="url(#g)"/>
+  <!-- Scissors mark: centered in ~66% safe zone -->
+  <g transform="translate(512 512) scale(22) translate(-12 -12)"
+     stroke="#e8a13a" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="7" cy="7" r="2.15"/>
+    <circle cx="7" cy="17" r="2.15"/>
+    <path d="M9 8.4 18.8 16.6M9 15.6 18.8 7.4"/>
+  </g>
+</svg>
