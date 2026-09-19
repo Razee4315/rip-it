@@ -71,6 +71,25 @@ function App() {
 
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
+			// AC-19: Escape walks the same stack as Android back — party → World → overflow
+			if (e.key === "Escape") {
+				if (party) {
+					e.preventDefault();
+					setParty(false);
+					return;
+				}
+				if (sheet === "world") {
+					e.preventDefault();
+					setSheet(null);
+					return;
+				}
+				if (sheet === "overflow") {
+					e.preventDefault();
+					setSheet(null);
+					return;
+				}
+				return;
+			}
 			const t = TOOLS.find((x) => x.key === e.key);
 			if (t) {
 				setTool(t.id);
@@ -90,7 +109,7 @@ function App() {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [persist]);
+	}, [persist, party, sheet]);
 
 	const fresh = () => {
 		setParty(false);
