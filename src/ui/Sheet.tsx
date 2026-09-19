@@ -195,7 +195,10 @@ export function Sheet(props: Props) {
 									key={m.id}
 									type="button"
 									$sel={props.matId === m.id}
-									onClick={() => props.onMat(m.id)}
+									onClick={() => {
+									props.onMat(m.id);
+									props.onClose();
+								}}
 								>
 									<i style={{ background: m.swatch }} />
 									<span>
@@ -240,7 +243,13 @@ export function Sheet(props: Props) {
 							</Btn>
 						</Row>
 						<Row>
-							<Btn type="button" onClick={props.onFresh}>
+							<Btn
+								type="button"
+								onClick={() => {
+									props.onFresh();
+									props.onClose();
+								}}
+							>
 								<IconRefresh size={16} /> Fresh cloth
 							</Btn>
 						</Row>
