@@ -18,10 +18,6 @@ const Dock = styled.nav`
 	padding-right: max(12px, env(safe-area-inset-right, 0px));
 	background: linear-gradient(180deg, transparent, rgba(8, 9, 12, 0.85) 40%);
 	pointer-events: none;
-
-	html:not(.touch) & {
-		/* Desktop: still bottom dock for consistency with UX brief */
-	}
 `;
 
 const Row = styled.div`
@@ -44,15 +40,22 @@ const Btn = styled.button<{ $active?: boolean }>`
 	align-items: center;
 	justify-content: center;
 	gap: 2px;
-	border-radius: 10px;
-	border: 1px solid
+	border-radius: 12px;
+	border: 2.5px solid
 		${({ $active }) => ($active ? tokens.colors.primary : "transparent")};
 	background: ${({ $active }) => ($active ? tokens.colors.surface.overlayActive : "transparent")};
 	color: ${({ $active }) => ($active ? tokens.colors.primary : tokens.colors.text.primary)};
+	box-shadow: ${({ $active }) => ($active ? tokens.shadows.glow.primary : "none")};
 	cursor: pointer;
 	font: inherit;
 	font-size: 10px;
+	font-weight: ${({ $active }) => ($active ? 700 : 500)};
 	white-space: nowrap;
+	box-sizing: border-box;
+
+	svg {
+		color: inherit;
+	}
 
 	&:active {
 		transform: scale(0.96);
@@ -80,7 +83,7 @@ export function ToolDock({ tool, onTool, onOverflow, overflowOpen }: Props) {
 						aria-pressed={tool === t.id}
 						onClick={() => onTool(t.id)}
 					>
-						{toolIcon(t.id, 22)}
+						{toolIcon(t.id, 26)}
 						<span>{t.name}</span>
 					</Btn>
 				))}
@@ -91,7 +94,7 @@ export function ToolDock({ tool, onTool, onOverflow, overflowOpen }: Props) {
 					aria-pressed={overflowOpen}
 					onClick={onOverflow}
 				>
-					<IconMore size={22} />
+					<IconMore size={26} />
 					<span>More</span>
 				</Btn>
 			</Row>

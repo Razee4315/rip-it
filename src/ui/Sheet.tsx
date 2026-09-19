@@ -104,15 +104,17 @@ const ToolBtn = styled.button<{ $sel?: boolean }>`
 	align-items: center;
 	justify-content: center;
 	gap: 4px;
-	border-radius: 9px;
-	border: 1px solid
+	border-radius: 12px;
+	border: 2.5px solid
 		${({ $sel }) => ($sel ? tokens.colors.primary : tokens.colors.border.default)};
 	background: ${({ $sel }) =>
 		$sel ? tokens.colors.surface.overlayActive : tokens.colors.surface.overlay};
 	color: ${({ $sel }) => ($sel ? tokens.colors.primary : tokens.colors.text.primary)};
+	box-shadow: ${({ $sel }) => ($sel ? tokens.shadows.glow.primary : "none")};
 	cursor: pointer;
 	font: inherit;
 	font-size: 11px;
+	font-weight: ${({ $sel }) => ($sel ? 700 : 500)};
 `;
 
 const Row = styled.div`
@@ -236,7 +238,7 @@ export function Sheet(props: Props) {
 										props.onClose();
 									}}
 								>
-									{toolIcon(t.id, 22)}
+									{toolIcon(t.id, 26)}
 									{t.name}
 								</ToolBtn>
 							))}
