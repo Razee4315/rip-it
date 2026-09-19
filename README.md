@@ -2,7 +2,7 @@
 
 Cloth-tearing satisfaction playground — **Tauri 2 + React + TypeScript**.
 
-Tear silk, denim, paper, chainmail and more with Hand, Blade, Torch, Water, and overflow tools. Desktop and Android share one codebase (split presentation only).
+Tear silk, denim, paper, chainmail and more with Hand, Scissors, Torch, Water, and overflow tools. Desktop and Android share one codebase (split presentation only).
 
 ## Local development
 

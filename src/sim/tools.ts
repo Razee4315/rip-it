@@ -9,7 +9,7 @@ export type ToolDef = {
 	dock?: "primary" | "overflow";
 };
 
-/** Blade in the dock maps to scissors (clean cut). Knife lives in overflow. */
+/** Primary dock: Hand / Scissors / Torch / Water. Knife+ in overflow. */
 export const TOOLS: ToolDef[] = [
 	{
 		id: "hand",
@@ -22,7 +22,7 @@ export const TOOLS: ToolDef[] = [
 	{
 		id: "scissors",
 		icon: "scissors",
-		name: "Blade",
+		name: "Scissors",
 		key: "2",
 		tip: "Click to snip, or hold and drag to cut a clean line.",
 		dock: "primary",
