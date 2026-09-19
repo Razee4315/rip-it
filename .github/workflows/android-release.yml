@@ -1,0 +1,148 @@
+name: Android Release APK
+
+# Release APK only (not debug). Cache keystore. Search app-universal-*.apk.
+# Copy android icons over gen res after android init. Attach to existing v{version} release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without the v (e.g. 0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        continue-on-error: true
+        with:
+          workspaces: ./src-tauri -> target
+          key: aarch64-linux-android
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Cache Android debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: rip-it-android-debug-keystore
+
+      - name: Restore release keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/rip-it-release.keystore
+          key: rip-it-android-release-keystore-v1
+
+      - name: Generate release keystore on first run
+        run: |
+          mkdir -p "$HOME/.android"
+          KS="$HOME/.android/rip-it-release.keystore"
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KS" -alias rip-it \
+              -keyalg RSA -keysize 2048 -validity 10950 \
+              -storepass rip-it-release -keypass rip-it-release \
+              -dname "CN=RIP IT, OU=RIP IT, O=RIP IT, L=Internet, ST=Internet, C=US"
+          else
+            echo "Keystore restored from cache"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Locate Android NDK
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          NDK_DIR="$(ls -d "$SDK"/ndk/*/ 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$NDK_DIR" ]; then
+            echo "::error::No Android NDK under $SDK/ndk"
+            exit 1
+          fi
+          echo "NDK_HOME=${NDK_DIR%/}" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+
+      - name: Generate icons from logo source
+        run: npx tauri icon design/logo-1024.png --output src-tauri/icons
+
+      - name: Init Android project
+        run: npx tauri android init
+
+      - name: Copy android icons over generated res
+        run: |
+          SRC="src-tauri/icons/android"
+          DEST="src-tauri/gen/android/app/src/main/res"
+          if [ -d "$SRC" ]; then
+            cp -r "$SRC"/mipmap-* "$DEST"/ 2>/dev/null || true
+            # Drop template foreground vectors if present
+            find "$DEST" -name '*ic_launcher_foreground*' -delete 2>/dev/null || true
+          fi
+
+      - name: Point signing at release keystore
+        run: |
+          cat > src-tauri/gen/android/keystore.properties <<PROP
+          keyAlias=rip-it
+          keyPassword=rip-it-release
+          storeFile=$HOME/.android/rip-it-release.keystore
+          storePassword=rip-it-release
+          PROP
+
+      - name: Build release APK (aarch64)
+        run: npx tauri android build --target aarch64 --apk
+
+      - name: Upload APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -eo pipefail
+          APK="$(find src-tauri/gen/android/app/build/outputs -name 'app-universal-*.apk' 2>/dev/null | head -1 || true)"
+          if [ -z "$APK" ]; then
+            APK="$(find src-tauri/gen/android/app/build/outputs -name '*release*.apk' 2>/dev/null | head -1 || true)"
+          fi
+          if [ -z "$APK" ]; then
+            echo "::error::No APK found under app/build/outputs"
+            find src-tauri/gen/android/app/build/outputs -name '*.apk' 2>/dev/null || true
+            exit 1
+          fi
+          mkdir -p dist-apk
+          OUT="dist-apk/RIP-IT_${VERSION}_universal.apk"
+          cp "$APK" "$OUT"
+          gh release upload "v${VERSION}" "$OUT" --clobber
+          echo "Attached $OUT to v${VERSION}"
+
+      - name: Publish failure log tail to issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## Android release failed"
+            echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > /tmp/apk-fail.md
+          gh issue create --title "ci: Android APK release failed (${{ github.run_id }})" --body-file /tmp/apk-fail.md || true
