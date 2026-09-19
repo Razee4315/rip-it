@@ -95,14 +95,23 @@ jobs:
 
       - name: Copy android icons over generated res
         run: |
+          set -euo pipefail
           SRC="src-tauri/icons/android"
           DEST="src-tauri/gen/android/app/src/main/res"
-          if [ -d "$SRC" ]; then
-            cp -r "$SRC"/mipmap-* "$DEST"/ 2>/dev/null || true
-            # Drop template foreground vectors if present
-            find "$DEST" -name '*ic_launcher_foreground*' -delete 2>/dev/null || true
+          if [ ! -d "$SRC" ]; then
+            echo "::error::Missing $SRC after tauri icon — adaptive mipmaps required"
+            ls -la src-tauri/icons || true
+            exit 1
           fi
-
+          cp -a "$SRC"/. "$DEST"/
+          # Drop ONLY template foreground VECTORS (keep mipmap pngs/xml from tauri icon)
+          find "$DEST" -type f \( -path '*/drawable*/ic_launcher_foreground.xml' -o -path '*/drawable*/ic_launcher_background.xml' \) -delete || true
+          mkdir -p "$DEST/values"
+          if ! grep -Rqs 'name="ic_launcher_background"' "$DEST/values"; then
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' '    <color name="ic_launcher_background">#0c0e12</color>' '</resources>' > "$DEST/values/ic_launcher_background.xml"
+          fi
+          echo "Android res after icon overlay:"
+          find "$DEST" -iname '*ic_launcher*' | sort
       - name: Point signing at release keystore
         run: |
           cat > src-tauri/gen/android/keystore.properties <<PROP
