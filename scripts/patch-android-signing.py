@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Patch Tauri-generated app/build.gradle.kts with release signingConfig."""
+"""Patch Tauri-generated app/build.gradle.kts with release signingConfig.
+
+Kotlin DSL: `java` is the Java plugin extension, so use
+`import java.util.Properties` + `Properties()` — never `java.util.Properties()`.
+"""
 from __future__ import annotations
 
 import pathlib
@@ -13,6 +17,15 @@ def main() -> int:
         return 2
     path = pathlib.Path(sys.argv[1])
     src = path.read_text()
+
+    import_line = "import java.util.Properties\n"
+    if "import java.util.Properties" not in src:
+        m = list(re.finditer(r"(?m)^import .+$", src))
+        if m:
+            last = m[-1]
+            src = src[: last.end()] + "\n" + import_line + src[last.end() :]
+        else:
+            src = import_line + "\n" + src
 
     signing_block = """
     signingConfigs {
@@ -30,7 +43,7 @@ def main() -> int:
     }
 """
 
-    if "create(\"release\")" not in src or "signingConfigs" not in src:
+    if "signingConfigs" not in src or 'create("release")' not in src:
         m = re.search(r"android\s*\{", src)
         if not m:
             print("no android { block", file=sys.stderr)
@@ -44,7 +57,9 @@ def main() -> int:
     if "signingConfig =" not in src:
         m = re.search(r'getByName\("release"\)\s*\{', src)
         if not m:
-            print('no getByName("release") block', file=sys.stderr)
+            m = re.search(r"(?m)^\s*release\s*\{", src)
+        if not m:
+            print("no release buildType block", file=sys.stderr)
             return 1
         src = src[: m.end()] + "\n        " + release_sig + "\n" + src[m.end() :]
 
