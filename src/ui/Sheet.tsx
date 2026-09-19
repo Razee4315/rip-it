@@ -206,9 +206,9 @@ export function Sheet(props: Props) {
 									type="button"
 									$sel={props.matId === m.id}
 									onClick={() => {
-									props.onMat(m.id);
-									props.onClose();
-								}}
+										props.onMat(m.id);
+										props.onClose();
+									}}
 								>
 									<i style={{ background: m.swatch }} />
 									<span>

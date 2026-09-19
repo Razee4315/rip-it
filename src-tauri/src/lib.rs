@@ -1,6 +1,11 @@
 use log::info;
 use std::env;
 
+#[tauri::command]
+pub fn greet(name: &str) -> String {
+    format!("Hello, {name}! Ready to RIP IT!")
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "android")]
@@ -25,18 +30,10 @@ pub fn run() {
 
     info!("Starting RIP IT!");
 
-    #[cfg_attr(not(desktop), allow(unused_mut))]
-    let mut builder = tauri::Builder::default()
+    tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![greet]);
-
-    builder
+        .invoke_handler(tauri::generate_handler![greet])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[tauri::command]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {name}! Ready to RIP IT!")
 }
