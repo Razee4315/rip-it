@@ -1,7 +1,7 @@
 import { type RipSettings, loadSettings, saveSettings } from "@/lib/settings";
 import type { ClothEngine } from "@/sim/ClothEngine";
 import { TOOLS, type ToolId } from "@/sim/tools";
-import type { GameStats } from "@/sim/types";
+import type { GameStats, Milestone, PartyPayload } from "@/sim/types";
 import { GlobalStyles, theme } from "@/theme";
 import { GameCanvas } from "@/ui/GameCanvas";
 import { Hud } from "@/ui/Hud";
@@ -30,6 +30,12 @@ const Stage = styled.main`
 	min-width: 0;
 `;
 
+/** rip-game tip ladder: teach one verb at a time, advance on the matching milestone. */
+const TIP_LADDER = ["Pinch and pull", "Try Scissors", "Try Torch on Paper"] as const;
+const TIP_DONE = TIP_LADDER.length;
+const TOAST_MS = 2600;
+const IDLE_NUDGE = "Still there? Grab, cut, burn — or R for fresh cloth";
+
 function App() {
 	const engineRef = useRef<ClothEngine | null>(null);
 	const [ready, setReady] = useState(false);
@@ -41,8 +47,10 @@ function App() {
 	const [muted, setMuted] = useState(false);
 	const [resetKey, setResetKey] = useState(0);
 	const [sheet, setSheet] = useState<"world" | "overflow" | null>(null);
-	const [showTip, setShowTip] = useState(true);
+	const [tipStep, setTipStep] = useState(0);
+	const [toast, setToast] = useState<string | null>(null);
 	const [party, setParty] = useState(false);
+	const [partyStats, setPartyStats] = useState<PartyPayload | null>(null);
 	const [stats, setStats] = useState<GameStats>({
 		destroyed: 0,
 		pieces: 1,
@@ -50,6 +58,14 @@ function App() {
 		fps: 0,
 		burning: 0,
 	});
+	const seenToolToasts = useRef<Set<ToolId>>(new Set());
+	const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const showToast = useCallback((text: string, ms = TOAST_MS) => {
+		if (toastTimer.current) clearTimeout(toastTimer.current);
+		setToast(text);
+		toastTimer.current = setTimeout(() => setToast(null), ms);
+	}, []);
 
 	useEffect(() => {
 		void loadSettings().then((s) => {
@@ -58,8 +74,12 @@ function App() {
 			setGravity(s.gravity);
 			setMatId(s.matId || "silk");
 			if (TOOLS.some((t) => t.id === s.tool)) setTool(s.tool as ToolId);
+			if (s.tutored) setTipStep(TIP_DONE);
 			setReady(true);
 		});
+		return () => {
+			if (toastTimer.current) clearTimeout(toastTimer.current);
+		};
 	}, []);
 
 	const persist = useCallback((patch: Partial<RipSettings>) => {
@@ -68,6 +88,32 @@ function App() {
 			void saveSettings(next);
 		});
 	}, []);
+
+	/** Single tool entry point — dock, sheet and hotkeys all land here. */
+	const selectTool = useCallback(
+		(id: ToolId) => {
+			setTool(id);
+			persist({ tool: id });
+			// First-select toast per session (skip Hand — the tip chip owns that beat)
+			if (id !== "hand" && !seenToolToasts.current.has(id)) {
+				seenToolToasts.current.add(id);
+				const t = TOOLS.find((x) => x.id === id);
+				if (t) showToast(t.tip);
+			}
+		},
+		[persist, showToast],
+	);
+
+	const onMilestone = useCallback((m: Milestone) => {
+		setTipStep((s) => {
+			const next = m === "tear" ? 1 : m === "cut" ? 2 : TIP_DONE;
+			return Math.max(s, next);
+		});
+	}, []);
+
+	useEffect(() => {
+		if (tipStep >= TIP_DONE) persist({ tutored: true });
+	}, [tipStep, persist]);
 
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
@@ -92,8 +138,7 @@ function App() {
 			}
 			const t = TOOLS.find((x) => x.key === e.key);
 			if (t) {
-				setTool(t.id);
-				persist({ tool: t.id });
+				selectTool(t.id);
 				return;
 			}
 			if (e.key === "r" || e.key === "R") {
@@ -109,12 +154,25 @@ function App() {
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [persist, party, sheet]);
+	}, [persist, party, sheet, selectTool]);
 
 	const fresh = () => {
 		setParty(false);
 		setResetKey((k) => k + 1);
 	};
+
+	const onParty = useCallback((p: PartyPayload | null) => {
+		if (p) {
+			setPartyStats(p);
+			setParty(true);
+		} else {
+			setParty(false);
+		}
+	}, []);
+
+	const onIdle = useCallback(() => {
+		showToast(IDLE_NUDGE, 3400);
+	}, [showToast]);
 
 	if (!ready) {
 		return (
@@ -124,6 +182,8 @@ function App() {
 			</ThemeProvider>
 		);
 	}
+
+	const tip = tipStep < TIP_DONE ? TIP_LADDER[tipStep] : null;
 
 	return (
 		<ThemeProvider theme={theme}>
@@ -140,20 +200,19 @@ function App() {
 						resetKey={resetKey}
 						engineRef={engineRef}
 						onStats={setStats}
-						onFirstTear={() => setShowTip(false)}
-						onParty={setParty}
+						onMilestone={onMilestone}
+						onParty={onParty}
+						onIdle={onIdle}
 					/>
 					<Hud
-						showTip={showTip}
+						tip={tip}
+						toast={toast}
 						onOpenWorld={() => setSheet("world")}
-						onDismissTip={() => setShowTip(false)}
+						onDismissTip={() => setTipStep((s) => Math.min(TIP_DONE, s + 1))}
 					/>
 					<ToolDock
 						tool={tool}
-						onTool={(id) => {
-							setTool(id);
-							persist({ tool: id });
-						}}
+						onTool={selectTool}
 						onOverflow={() => setSheet((s) => (s === "overflow" ? null : "overflow"))}
 						overflowOpen={sheet === "overflow"}
 					/>
@@ -175,10 +234,7 @@ function App() {
 								setParty(false);
 								persist({ matId: id });
 							}}
-							onTool={(id) => {
-								setTool(id);
-								persist({ tool: id });
-							}}
+							onTool={selectTool}
 							onWind={(v) => {
 								setWind(v);
 								persist({ wind: v });
@@ -200,7 +256,7 @@ function App() {
 							}}
 						/>
 					)}
-					{party && <PartyCard onFresh={fresh} />}
+					{party && <PartyCard stats={partyStats} onFresh={fresh} />}
 				</Stage>
 			</Shell>
 		</ThemeProvider>

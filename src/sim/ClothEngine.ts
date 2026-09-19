@@ -1,14 +1,22 @@
 import * as sfx from "@/audio/sfx";
+import { haptic } from "@/lib/haptics";
 import { type Material, getMaterial } from "./materials";
 import { TAU, clamp, lerp, rand } from "./math";
 import type { ToolId } from "./tools";
-import type { Constraint, GameStats, Particle, Tri } from "./types";
+import type { Constraint, GameStats, Milestone, Particle, PartyPayload, Tri } from "./types";
 
 export type EngineCallbacks = {
 	onStats?: (s: GameStats) => void;
-	onFirstTear?: () => void;
-	onParty?: (show: boolean) => void;
+	/** First tear / cut / burn per cloth — drives the tip ladder. */
+	onMilestone?: (m: Milestone) => void;
+	/** Party recap payload, or null when a fresh cloth closes it. */
+	onParty?: (p: PartyPayload | null) => void;
+	/** Fired once per cloth after IDLE_AFTER_S without input. */
+	onIdle?: () => void;
 };
+
+const IDLE_AFTER_S = 20;
+const GHOST_HINT_MAX_AGE_S = 12;
 
 type Grab = { p: Particle; ox: number; oy: number; w: number; pri: boolean };
 
@@ -61,8 +69,17 @@ export class ClothEngine {
 	frameN = 0;
 	partyShown = false;
 	firstTearFired = false;
+	firstCutFired = false;
+	firstBurnFired = false;
+	idleFired = false;
 	/** seconds; tip dismiss only after recent canvas input (AC-02) */
 	lastInputAt = Number.NEGATIVE_INFINITY;
+	/** hit-freeze seconds — micro pause that sells big rips */
+	hitstop = 0;
+	/** cloth fill-in ramp after build (0→1) */
+	spawnT = 1;
+	/** this.time at last buildCloth — drives ghost hint age + party seconds */
+	builtAt = 0;
 
 	ptr = { x: 0, y: 0, px: 0, py: 0, down: false, id: -1, vx: 0, vy: 0, lastT: 0 };
 	grabList: Grab[] = [];
@@ -290,7 +307,14 @@ export class ClothEngine {
 		this.lastBurningN = 0;
 		this.partyShown = false;
 		this.shake = 0;
-		this.cb.onParty?.(false);
+		this.firstTearFired = false;
+		this.firstCutFired = false;
+		this.firstBurnFired = false;
+		this.idleFired = false;
+		this.hitstop = 0;
+		this.spawnT = 0;
+		this.builtAt = this.time;
+		this.cb.onParty?.(null);
 
 		const { W, H, rodY } = this;
 		const clothW = Math.min(W * 0.68, 780);
@@ -506,11 +530,13 @@ export class ClothEngine {
 			let ax = 0;
 			let ay = g * (1 + p.wet * 0.75);
 			const w = this.wm(p);
-			if (this.windAmp > 0.002) {
+			{
+				// base sway keeps the cloth alive even with the wind slider at zero
+				const sway = this.windAmp + 0.03;
 				const wf =
 					Math.sin(this.time * 0.8 + p.y * 0.006) +
 					0.55 * Math.sin(this.time * 2.1 + p.y * 0.013 + p.x * 0.004);
-				ax += this.windAmp * 750 * this.mat.wind * wf * w * (1 - p.wet * 0.7);
+				ax += sway * 750 * this.mat.wind * wf * w * (1 - p.wet * 0.7);
 			}
 			if (this.fan.on) {
 				const dx = p.x - this.fan.x,
@@ -624,13 +650,17 @@ export class ClothEngine {
 			else if (this.mat.id === "mail") {
 				for (let i = 0; i < Math.min(3, this.breaksTear); i++) sfx.tinkSnd();
 			} else if (sfx.tryBudget()) sfx.ripSnd(v, this.mat.sndF, this.mat.sndD);
-			// Tip dismiss: only user-driven tears (ptr down or input within 0.8s) — not ambient settle/wind
-			if (
-				!this.firstTearFired &&
-				(this.ptr.down || this.time - this.lastInputAt < 0.8)
-			) {
+			// Juice: freeze-frame + haptics scale with the burst size
+			if (this.breaksTear >= 3) {
+				this.hitstop = clamp(0.018 + this.breaksTear * 0.005, 0.018, 0.075);
+				haptic([10, 26, 14]);
+			} else {
+				haptic(8);
+			}
+			// Tip ladder: first tear milestone, only user-driven (ptr down or input within 0.8s)
+			if (!this.firstTearFired && (this.ptr.down || this.time - this.lastInputAt < 0.8)) {
 				this.firstTearFired = true;
-				this.cb.onFirstTear?.();
+				this.cb.onMilestone?.("tear");
 			}
 		}
 		if (creak && this.tool === "hand" && this.ptr.down && Math.random() < 0.12) sfx.creakSnd();
@@ -706,6 +736,7 @@ export class ClothEngine {
 			this.addFray(q, ang + Math.PI, true, 9);
 		} else if (cause === "tear") {
 			this.spawnFibers(mx, my, ang, 2 + Math.min(6, (inten * 4) | 0));
+			if (inten > 1.3 && Math.random() < 0.22) this.spawnSparks(mx, my, 2);
 			this.addFray(p, ang, false, 9);
 			this.addFray(q, ang + Math.PI, false, 9);
 			this.breaksTear++;
@@ -724,6 +755,19 @@ export class ClothEngine {
 			this.addFray(p, ang, true, 4);
 			this.addFray(q, ang + Math.PI, true, 4);
 			if (this.mat.render === "mail") this.spawnSparks(mx, my, 3);
+		}
+	}
+
+	private markCut() {
+		if (!this.firstCutFired) {
+			this.firstCutFired = true;
+			this.cb.onMilestone?.("cut");
+		}
+	}
+	private markBurn() {
+		if (!this.firstBurnFired) {
+			this.firstBurnFired = true;
+			this.cb.onMilestone?.("burn");
 		}
 	}
 
@@ -987,7 +1031,10 @@ export class ClothEngine {
 			this.ptr.vx = this.ptr.vx * 0.6 + ((x - this.ptr.x) / dt) * 1000 * 0.4;
 			this.ptr.vy = this.ptr.vy * 0.6 + ((y - this.ptr.y) / dt) * 1000 * 0.4;
 			this.ptr.lastT = now;
-			if (this.ptr.down && e.pointerId !== this.ptr.id) return;
+			if (this.ptr.down) {
+				this.lastInputAt = this.time;
+				if (e.pointerId !== this.ptr.id) return;
+			}
 			this.ptr.px = this.ptr.x;
 			this.ptr.py = this.ptr.y;
 			this.ptr.x = x;
@@ -1054,6 +1101,7 @@ export class ClothEngine {
 				const n = this.cutSeg(x - 5, y, x + 5, y, 5, "cut");
 				if (n) {
 					this.snipT = 1;
+					this.markCut();
 					if (performance.now() - this.lastSnipSnd > 60) {
 						sfx.snipSnd();
 						this.lastSnipSnd = performance.now();
@@ -1105,6 +1153,7 @@ export class ClothEngine {
 					this.lastCutY = y;
 					if (n) {
 						this.snipT = 1;
+						this.markCut();
 						if (performance.now() - this.lastSnipSnd > 60) {
 							sfx.snipSnd();
 							this.lastSnipSnd = performance.now();
@@ -1128,6 +1177,7 @@ export class ClothEngine {
 					);
 					if (n) {
 						this.spawnSlash(this.ptr.px, this.ptr.py, x, y);
+						this.markCut();
 						if (performance.now() - this.lastSnipSnd > 90) {
 							sfx.whooshSnd(sp / 2500);
 							this.lastSnipSnd = performance.now();
@@ -1195,6 +1245,7 @@ export class ClothEngine {
 						p.burn = true;
 						p.burnT = 0;
 						lit++;
+						this.markBurn();
 						if (lit > 14) break;
 					}
 				}
@@ -1282,10 +1333,15 @@ export class ClothEngine {
 			}
 		}
 		if (this.frameN & 1) this.computeShade();
+		// Fill-in on fresh cloth: ease from 35% so the cloth is never invisible on open
+		const fill = this.spawnT < 1 ? 0.35 + 0.65 * this.spawnT * this.spawnT : 1;
+		if (fill < 1) ctx.globalAlpha = fill;
 		if (this.mat.render === "mail") this.renderMail();
 		else this.renderCloth();
 		this.renderFrays();
 		this.renderPins();
+		if (fill < 1) ctx.globalAlpha = 1;
+		if (!this.firstTearFired && this.spawnT >= 1) this.drawGhostPinch();
 		this.renderFX();
 		ctx.restore();
 		if (this.vigCv) ctx.drawImage(this.vigCv, 0, 0, W, H);
@@ -1531,6 +1587,34 @@ export class ClothEngine {
 		ctx.lineCap = "butt";
 	}
 
+	/** Cold-open hook: pulsing pinch hint on the cloth until the first user tear. No auto-demo rip. */
+	private drawGhostPinch() {
+		const age = this.time - this.builtAt;
+		if (age > GHOST_HINT_MAX_AGE_S) return;
+		const p = this.parts[this.idx(this.cols >> 1, ((this.rows * 0.42) | 0) + 1)];
+		if (!p || p.pin) return;
+		const ctx = this.ctx;
+		const fade = age < 8 ? 1 : Math.max(0, 1 - (age - 8) / (GHOST_HINT_MAX_AGE_S - 8));
+		const pinch = Math.sin(((age % 1.7) / 1.7) * Math.PI);
+		const a = fade * (0.38 - 0.14 * pinch);
+		const r = 24 - pinch * 9;
+		ctx.save();
+		ctx.translate(p.x, p.y);
+		ctx.strokeStyle = `rgba(232,161,58,${a})`;
+		ctx.lineWidth = 2;
+		ctx.beginPath();
+		ctx.arc(0, 0, r, 0, TAU);
+		ctx.stroke();
+		const gap = r + 7 - pinch * 5;
+		ctx.fillStyle = `rgba(232,161,58,${a * 0.75})`;
+		for (const s of [-1, 1]) {
+			ctx.beginPath();
+			ctx.arc(0, s * gap, 3, 0, TAU);
+			ctx.fill();
+		}
+		ctx.restore();
+	}
+
 	private drawCursor() {
 		const ctx = this.ctx;
 		const x = this.ptr.x,
@@ -1710,17 +1794,22 @@ export class ClothEngine {
 		this.fpsAcc += dt;
 		this.fpsN++;
 		const ts = this.slowmo ? 0.28 : 1;
-		this.acc += dt * ts;
-		const FIXED = 1 / 60;
-		let steps = 0;
-		const maxSteps = this.lastBurningN > 48 ? 2 : this.lastBurningN > 20 ? 3 : 5;
-		while (this.acc >= FIXED && steps < maxSteps) {
-			this.step(FIXED);
-			this.updateFX(FIXED);
-			this.acc -= FIXED;
-			steps++;
+		if (this.hitstop > 0) {
+			this.hitstop -= dt;
+		} else {
+			this.acc += dt * ts;
+			const FIXED = 1 / 60;
+			let steps = 0;
+			const maxSteps = this.lastBurningN > 48 ? 2 : this.lastBurningN > 20 ? 3 : 5;
+			while (this.acc >= FIXED && steps < maxSteps) {
+				this.step(FIXED);
+				this.updateFX(FIXED);
+				this.acc -= FIXED;
+				steps++;
+			}
+			if (steps >= maxSteps) this.acc = 0;
 		}
-		if (steps >= maxSteps) this.acc = 0;
+		if (this.spawnT < 1) this.spawnT = Math.min(1, this.spawnT + dt * 2.4);
 		this.snipT = Math.max(0, this.snipT - dt * 6);
 		this.shake *= Math.pow(0.0001, dt);
 		if (this.shake < 0.1) this.shake = 0;
@@ -1732,6 +1821,16 @@ export class ClothEngine {
 			}
 		}
 		this.frameN++;
+		if (
+			!this.idleFired &&
+			!this.partyShown &&
+			this.spawnT >= 1 &&
+			this.time - this.builtAt > 5 &&
+			this.time - this.lastInputAt > IDLE_AFTER_S
+		) {
+			this.idleFired = true;
+			this.cb.onIdle?.();
+		}
 		if (this.frameN % 20 === 0) this.pieces = this.countPieces();
 		if (now - this.lastStats > 250) {
 			this.lastStats = now;
@@ -1748,7 +1847,13 @@ export class ClothEngine {
 			});
 			if (pct >= 0.96 && !this.partyShown) {
 				this.partyShown = true;
-				this.cb.onParty?.(true);
+				haptic([25, 50, 25, 50, 110]);
+				this.cb.onParty?.({
+					fibers: this.stats.fib,
+					pieces: this.pieces,
+					pct,
+					seconds: Math.max(1, Math.round(this.time - this.builtAt)),
+				});
 			}
 		}
 		this.render();

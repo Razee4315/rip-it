@@ -6,6 +6,7 @@ export type RipSettings = {
 	gravity: number;
 	matId: string;
 	tool: string;
+	tutored: boolean;
 };
 
 const KEY = "rip-it-settings";
@@ -15,6 +16,7 @@ const DEFAULTS: RipSettings = {
 	gravity: 1,
 	matId: "silk",
 	tool: "hand",
+	tutored: false,
 };
 
 function isTauri(): boolean {
