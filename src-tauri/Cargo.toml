@@ -1,6 +1,6 @@
 [package]
 name = "rip-it"
-version = "0.1.3"
+version = "0.1.4"
 description = "RIP IT! cloth-tearing playground"
 authors = ["Razee4315"]
 edition = "2021"
