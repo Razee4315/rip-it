@@ -112,19 +112,34 @@ jobs:
           fi
           echo "Android res after icon overlay:"
           find "$DEST" -iname '*ic_launcher*' | sort
-      - name: Point signing at release keystore
+      - name: Write keystore.properties (no leading spaces)
         run: |
-          cat > src-tauri/gen/android/keystore.properties <<PROP
-          keyAlias=rip-it
-          keyPassword=rip-it-release
-          storeFile=$HOME/.android/rip-it-release.keystore
-          storePassword=rip-it-release
-          PROP
+          set -euo pipefail
+          KS="$HOME/.android/rip-it-release.keystore"
+          {
+            echo "keyAlias=rip-it"
+            echo "keyPassword=rip-it-release"
+            echo "storeFile=$KS"
+            echo "storePassword=rip-it-release"
+          } > src-tauri/gen/android/keystore.properties
+          cat src-tauri/gen/android/keystore.properties
+
+      - name: Patch Gradle release signingConfig
+        run: |
+          set -euo pipefail
+          GRADLE="$(find src-tauri/gen/android -path '*/app/build.gradle.kts' | head -1)"
+          if [ -z "$GRADLE" ]; then
+            echo "::error::app/build.gradle.kts not found after android init"
+            find src-tauri/gen/android -name 'build.gradle.kts' || true
+            exit 1
+          fi
+          python3 scripts/patch-android-signing.py "$GRADLE"
+          grep -n 'signingConfig\|signingConfigs\|keystore' "$GRADLE" | head -40
 
       - name: Build release APK (aarch64)
         run: npx tauri android build --target aarch64 --apk
 
-      - name: Upload APK to GitHub Release
+      - name: Verify APK is signed + attach to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
@@ -139,11 +154,15 @@ jobs:
             find src-tauri/gen/android/app/build/outputs -name '*.apk' 2>/dev/null || true
             exit 1
           fi
+          echo "Found APK: $APK ($(wc -c < "$APK") bytes)"
+          python3 scripts/verify-apk-signed.py "$APK"
           mkdir -p dist-apk
-          OUT="dist-apk/RIP-IT_${VERSION}_universal.apk"
-          cp "$APK" "$OUT"
-          gh release upload "v${VERSION}" "$OUT" --clobber
-          echo "Attached $OUT to v${VERSION}"
+          OUT_ARM="dist-apk/RIP-IT_${VERSION}_arm64-v8a.apk"
+          OUT_UNI="dist-apk/RIP-IT_${VERSION}_universal.apk"
+          cp "$APK" "$OUT_ARM"
+          cp "$APK" "$OUT_UNI"
+          gh release upload "v${VERSION}" "$OUT_ARM" "$OUT_UNI" --clobber
+          echo "Attached signed APKs to v${VERSION}"
 
       - name: Publish failure log tail to issue
         if: failure()
