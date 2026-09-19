@@ -151,6 +151,49 @@ const MuteBtn = styled(Btn)`
 	padding: 10px 12px;
 `;
 
+const StatGrid = styled.div`
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr;
+	gap: 8px;
+	margin: 4px 0 14px;
+`;
+
+const Stat = styled.div`
+	padding: 10px 8px;
+	border-radius: 9px;
+	border: 1px solid ${tokens.colors.border.default};
+	background: ${tokens.colors.surface.overlay};
+	text-align: center;
+	small {
+		display: block;
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.8px;
+		text-transform: uppercase;
+		color: ${tokens.colors.text.secondary};
+		margin-bottom: 4px;
+	}
+	b {
+		font-size: 16px;
+		font-weight: 700;
+		color: ${tokens.colors.text.primary};
+	}
+`;
+
+const DestroyBar = styled.div`
+	height: 8px;
+	border-radius: 4px;
+	background: rgba(255, 255, 255, 0.07);
+	overflow: hidden;
+	margin-bottom: 12px;
+	i {
+		display: block;
+		height: 100%;
+		border-radius: 4px;
+		background: linear-gradient(90deg, ${tokens.colors.primary}, ${tokens.colors.secondary});
+	}
+`;
+
 type Props = {
 	mode: "world" | "overflow";
 	matId: string;
@@ -159,6 +202,9 @@ type Props = {
 	gravity: number;
 	slowmo: boolean;
 	muted: boolean;
+	destroyed: number;
+	pieces: number;
+	fibers: number;
 	onClose: () => void;
 	onMat: (id: string) => void;
 	onTool: (id: ToolId) => void;
@@ -253,6 +299,24 @@ export function Sheet(props: Props) {
 								{props.muted ? "Unmute" : "Mute"}
 							</MuteBtn>
 						</Row>
+						<Title>Destruction</Title>
+						<DestroyBar aria-hidden="true">
+							<i style={{ width: `${Math.min(100, Math.round(props.destroyed * 100))}%` }} />
+						</DestroyBar>
+						<StatGrid>
+							<Stat>
+								<small>Destroyed</small>
+								<b>{Math.round(props.destroyed * 100)}%</b>
+							</Stat>
+							<Stat>
+								<small>Pieces</small>
+								<b>{props.pieces}</b>
+							</Stat>
+							<Stat>
+								<small>Fibres</small>
+								<b>{props.fibers}</b>
+							</Stat>
+						</StatGrid>
 						<Row>
 							<Btn
 								type="button"

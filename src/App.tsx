@@ -144,10 +144,6 @@ function App() {
 						onParty={setParty}
 					/>
 					<Hud
-						destroyed={stats.destroyed}
-						pieces={stats.pieces}
-						fibers={stats.fibers}
-						fps={stats.fps}
 						showTip={showTip}
 						onOpenWorld={() => setSheet("world")}
 						onDismissTip={() => setShowTip(false)}
@@ -170,6 +166,9 @@ function App() {
 							gravity={gravity}
 							slowmo={slowmo}
 							muted={muted}
+							destroyed={stats.destroyed}
+							pieces={stats.pieces}
+							fibers={stats.fibers}
 							onClose={() => setSheet(null)}
 							onMat={(id) => {
 								setMatId(id);

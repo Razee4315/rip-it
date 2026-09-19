@@ -15,7 +15,7 @@ const Top = styled.header`
 	padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
 		8px max(12px, env(safe-area-inset-left, 0px));
 	pointer-events: none;
-	background: linear-gradient(180deg, rgba(8, 9, 12, 0.75), transparent);
+	background: linear-gradient(180deg, rgba(8, 9, 12, 0.55), transparent);
 `;
 
 const Brand = styled.div`
@@ -36,22 +36,6 @@ const Brand = styled.div`
 	}
 `;
 
-const Stats = styled.div`
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 6px 10px;
-	font-size: 11px;
-	color: ${tokens.colors.text.secondary};
-	pointer-events: none;
-	max-width: min(420px, 52vw);
-
-	b {
-		color: ${tokens.colors.text.primary};
-		font-weight: 600;
-	}
-`;
-
 const Gear = styled.button`
 	pointer-events: auto;
 	min-width: 44px;
@@ -69,7 +53,6 @@ const Gear = styled.button`
 const Tip = styled.button`
 	position: absolute;
 	left: 50%;
-	/* UX §4: lower-center of canvas, clear of dock + safe-area */
 	bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 72px));
 	top: auto;
 	transform: translateX(-50%);
@@ -105,16 +88,13 @@ const Legend = styled.div`
 `;
 
 type Props = {
-	destroyed: number;
-	pieces: number;
-	fibers: number;
-	fps: number;
 	showTip: boolean;
 	onOpenWorld: () => void;
 	onDismissTip: () => void;
 };
 
-export function Hud({ destroyed, pieces, fibers, fps, showTip, onOpenWorld, onDismissTip }: Props) {
+/** Play chrome only — stats live in World sheet (fun pass). */
+export function Hud({ showTip, onOpenWorld, onDismissTip }: Props) {
 	return (
 		<>
 			<Top>
@@ -122,20 +102,6 @@ export function Hud({ destroyed, pieces, fibers, fps, showTip, onOpenWorld, onDi
 					<IconLogo size={20} />
 					RIP<span>IT!</span>
 				</Brand>
-				<Stats>
-					<span>
-						Destroyed <b>{Math.round(destroyed * 100)}%</b>
-					</span>
-					<span>
-						Pieces <b>{pieces}</b>
-					</span>
-					<span>
-						Fibres <b>{fibers}</b>
-					</span>
-					<span>
-						FPS <b>{fps || "–"}</b>
-					</span>
-				</Stats>
 				<Gear type="button" aria-label="Fabric and world settings" onClick={onOpenWorld}>
 					<IconSliders size={20} />
 				</Gear>
