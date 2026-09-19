@@ -130,6 +130,7 @@ function App() {
 						fps={stats.fps}
 						showTip={showTip}
 						onOpenWorld={() => setSheet("world")}
+						onDismissTip={() => setShowTip(false)}
 					/>
 					<ToolDock
 						tool={tool}

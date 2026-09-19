@@ -63,19 +63,27 @@ const Gear = styled.button`
 	justify-content: center;
 `;
 
-const Tip = styled.div`
+const Tip = styled.button`
 	position: absolute;
 	left: 50%;
-	top: max(56px, calc(env(safe-area-inset-top, 0px) + 48px));
+	/* UX §4: lower-center of canvas, clear of dock + safe-area */
+	bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+	top: auto;
 	transform: translateX(-50%);
-	z-index: ${tokens.zIndex.dock};
-	padding: 8px 14px;
+	z-index: ${tokens.zIndex.toast};
+	min-height: ${tokens.touch.minTargetPx}px;
+	padding: 10px 16px;
 	border-radius: 999px;
-	background: rgba(22, 26, 34, 0.9);
-	border: 1px solid ${tokens.colors.border.default};
+	background: rgba(22, 26, 34, 0.95);
+	border: 1px solid ${tokens.colors.border.party};
+	box-shadow: ${tokens.shadows.glow.primary};
 	color: ${tokens.colors.text.primary};
+	font: inherit;
 	font-size: 13px;
-	pointer-events: none;
+	font-weight: 600;
+	letter-spacing: 0.2px;
+	cursor: pointer;
+	pointer-events: auto;
 	white-space: nowrap;
 `;
 
@@ -99,9 +107,10 @@ type Props = {
 	fps: number;
 	showTip: boolean;
 	onOpenWorld: () => void;
+	onDismissTip: () => void;
 };
 
-export function Hud({ destroyed, pieces, fps, showTip, onOpenWorld }: Props) {
+export function Hud({ destroyed, pieces, fps, showTip, onOpenWorld, onDismissTip }: Props) {
 	return (
 		<>
 			<Top>
@@ -124,7 +133,11 @@ export function Hud({ destroyed, pieces, fps, showTip, onOpenWorld }: Props) {
 					<IconSliders size={20} />
 				</Gear>
 			</Top>
-			{showTip && <Tip>Pinch and pull</Tip>}
+			{showTip && (
+				<Tip type="button" role="status" onClick={onDismissTip} aria-label="Pinch and pull">
+					Pinch and pull
+				</Tip>
+			)}
 			<Legend>1–8 tools · R fresh cloth · S slow-mo · M mute</Legend>
 		</>
 	);
