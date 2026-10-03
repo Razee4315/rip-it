@@ -59,8 +59,7 @@
 			"src-tauri/target/**",
 			"src-tauri/gen/**",
 			"*.config.ts",
-			"*.config.js",
-			"src/sim/ClothEngine.ts"
+			"*.config.js"
 		]
 	}
 }

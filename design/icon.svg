@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    RIP IT! app icon.
+    A square of red cloth ripped down the middle, light breaking through the tear.
+    Full-bleed background; everything that matters sits inside the central 66% (Android adaptive safe zone).
+    Shapes, gradients and blurs only: no text, no external fonts.
+  -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="46%" r="72%">
+      <stop offset="0" stop-color="#2a2530"/>
+      <stop offset="0.55" stop-color="#151218"/>
+      <stop offset="1" stop-color="#09080b"/>
+    </radialGradient>
+
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#fff6d8"/>
+      <stop offset="0.22" stop-color="#ffd166" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#ff7a2b" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ff4a2b" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- the dye: lit from the upper left -->
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff6a45"/>
+      <stop offset="0.42" stop-color="#f03d22"/>
+      <stop offset="1" stop-color="#a81a10"/>
+    </linearGradient>
+
+    <!-- soft folds running down the cloth -->
+    <linearGradient id="folds" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity="0.2"/>
+      <stop offset="0.16" stop-color="#fff" stop-opacity="0.14"/>
+      <stop offset="0.34" stop-color="#000" stop-opacity="0.16"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0.1"/>
+      <stop offset="0.68" stop-color="#000" stop-opacity="0.2"/>
+      <stop offset="0.84" stop-color="#fff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.24"/>
+    </linearGradient>
+
+    <!-- the torn edges catch the light from behind -->
+    <linearGradient id="rimL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0.7" stop-color="#ffd166" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ffe9a8" stop-opacity="0.75"/>
+    </linearGradient>
+    <linearGradient id="rimR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffe9a8" stop-opacity="0.75"/>
+      <stop offset="0.3" stop-color="#ffd166" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="blur40" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+    <filter id="blur14" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+
+    <path id="left" d="M -204 -240 L -60 -240 L -20 -170 L -75 -110 L -10 -50 L -55 10 L 15 70 L -30 130 L 40 190 L 10 240 L -204 240 Q -240 240 -240 204 L -240 -204 Q -240 -240 -204 -240 Z"/>
+    <path id="right" d="M -60 -240 L 204 -240 Q 240 -240 240 -204 L 240 204 Q 240 240 204 240 L 10 240 L 40 190 L -30 130 L 15 70 L -55 10 L -10 -50 L -75 -110 L -20 -170 Z"/>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!-- light behind the cloth -->
+  <circle cx="512" cy="512" r="380" fill="url(#glow)"/>
+  <g transform="translate(512 512) rotate(-7)">
+    <rect x="-70" y="-300" width="140" height="600" rx="70" fill="#fff3c4" filter="url(#blur40)"/>
+    <rect x="-26" y="-270" width="52" height="540" rx="26" fill="#ffffff" filter="url(#blur14)"/>
+  </g>
+
+  <g transform="translate(512 512) rotate(-7)">
+    <!-- cast shadow -->
+    <g opacity="0.55" filter="url(#shadow)">
+      <use href="#left" transform="translate(-44 30) rotate(-5)" fill="#000"/>
+      <use href="#right" transform="translate(44 18) rotate(5)" fill="#000"/>
+    </g>
+
+    <!-- left half -->
+    <g transform="translate(-44 6) rotate(-5)">
+      <use href="#left" fill="url(#red)"/>
+      <use href="#left" fill="url(#folds)"/>
+      <use href="#left" fill="url(#rimL)"/>
+      <path d="M -92 -212 L -198 -212 Q -212 -212 -212 -198 L -212 198 Q -212 212 -198 212 L -22 212"
+            fill="none" stroke="#ffe7cf" stroke-opacity="0.9" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 18"/>
+    </g>
+
+    <!-- right half -->
+    <g transform="translate(44 -6) rotate(5)">
+      <use href="#right" fill="url(#red)"/>
+      <use href="#right" fill="url(#folds)"/>
+      <use href="#right" fill="url(#rimR)"/>
+      <path d="M -28 -212 L 198 -212 Q 212 -212 212 -198 L 212 198 Q 212 212 198 212 L 46 212"
+            fill="none" stroke="#ffe7cf" stroke-opacity="0.9" stroke-width="8" stroke-linecap="round" stroke-dasharray="24 18"/>
+    </g>
+
+    <!-- the last threads still holding on -->
+    <g fill="none" stroke="#fff1dc" stroke-linecap="round">
+      <path d="M -88 -118 Q -30 -96 52 -128" stroke-width="6"/>
+      <path d="M -70 2 Q -8 30 62 -4" stroke-width="5"/>
+      <path d="M -46 122 Q 14 150 86 118" stroke-width="6"/>
+      <path d="M -36 -52 Q 0 -44 30 -62" stroke-width="3.5" stroke-opacity="0.8"/>
+      <path d="M -16 66 Q 22 78 54 60" stroke-width="3.5" stroke-opacity="0.8"/>
+    </g>
+
+    <!-- fibres thrown out by the rip -->
+    <g fill="#ffe9a8">
+      <circle cx="-4" cy="-196" r="7"/>
+      <circle cx="26" cy="-232" r="4.5"/>
+      <circle cx="12" cy="206" r="6"/>
+      <circle cx="-22" cy="246" r="4"/>
+      <circle cx="40" cy="-88" r="3.5"/>
+      <circle cx="-30" cy="96" r="3.5"/>
+    </g>
+  </g>
+</svg>

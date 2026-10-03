@@ -1,87 +1,72 @@
-import { tokens } from "@/theme/tokens";
-import styled from "styled-components";
-import { IconLogo, IconSliders } from "./icons";
-
-const Top = styled.header`
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	z-index: ${tokens.zIndex.dock};
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
-		8px max(12px, env(safe-area-inset-left, 0px));
-	pointer-events: none;
-	background: linear-gradient(180deg, rgba(8, 9, 12, 0.55), transparent);
-`;
-
-const Brand = styled.div`
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	color: #fff;
-	font-weight: 800;
-	font-size: 18px;
-	letter-spacing: 0.6px;
-	pointer-events: none;
-
-	span {
-		color: ${tokens.colors.primary};
-	}
-	svg {
-		color: ${tokens.colors.primary};
-	}
-`;
-
-const Gear = styled.button`
-	pointer-events: auto;
-	min-width: 44px;
-	min-height: 44px;
-	border-radius: 10px;
-	border: 1px solid ${tokens.colors.border.default};
-	background: ${tokens.colors.surface.elevated};
-	color: ${tokens.colors.text.primary};
-	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-`;
-
-const Legend = styled.div`
-	position: absolute;
-	left: 12px;
-	bottom: 72px;
-	font-size: 10.5px;
-	color: #5c6371;
-	pointer-events: none;
-	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-
-	html.touch & {
-		display: none;
-	}
-`;
+import type { HudState, LevelDef } from "@/game/types";
+import { IconClock, IconPause, IconRestart, IconShield, IconSliders, ObjectiveIcon } from "./icons";
 
 type Props = {
-	onOpenWorld: () => void;
+	level: LevelDef;
+	hud: HudState;
+	onPause: () => void;
+	onRestart: () => void;
+	onSheet?: () => void;
 };
 
-/** Play chrome only — brand + settings. Stats live in World sheet. */
-export function Hud({ onOpenWorld }: Props) {
+/** Top bar while playing: pause, what to do and how far along, and the clock. */
+export function Hud({ level, hud, onPause, onRestart, onSheet }: Props) {
+	const sandbox = level.objective.type === "sandbox";
+	const done = hud.progress >= 1 && !sandbox;
+	const low = hud.timeLeft !== null && hud.timeLeft <= 5 && hud.started;
 	return (
-		<>
-			<Top>
-				<Brand>
-					<IconLogo size={20} />
-					RIP<span>IT!</span>
-				</Brand>
-				<Gear type="button" aria-label="Fabric and world settings" onClick={onOpenWorld}>
-					<IconSliders size={20} />
-				</Gear>
-			</Top>
-			<Legend>1–8 tools · R fresh cloth · S slow-mo · M mute</Legend>
-		</>
+		<header className="hud">
+			<button type="button" className="round" aria-label="Pause" onClick={onPause}>
+				<IconPause size={22} />
+			</button>
+			<div className="goalwrap">
+				<div className={`goal${done ? " goal--done" : ""}`} role="status" aria-live="polite">
+					<span className="goal__icon">
+						<ObjectiveIcon type={level.objective.type} size={20} />
+					</span>
+					<span className="goal__text">
+						<span className="goal__brief">{level.brief}</span>
+					</span>
+					<span className="goal__read">{hud.readout}</span>
+					<span className="goal__bar">
+						<span
+							className="goal__fill"
+							style={{ transform: `scaleX(${Math.max(0, Math.min(1, hud.progress))})` }}
+						/>
+					</span>
+				</div>
+				{hud.guard >= 0 && (
+					<div className={`guard${hud.guard < 0.93 ? " guard--low" : ""}`}>
+						<IconShield size={16} />
+						<span className="guard__track">
+							<span className="guard__fill" style={{ transform: `scaleX(${hud.guard})` }} />
+						</span>
+						{Math.round(hud.guard * 100)}%
+					</div>
+				)}
+			</div>
+			<div className="hud__side">
+				{sandbox ? (
+					<button
+						type="button"
+						className="round"
+						aria-label="Fabric and world settings"
+						onClick={onSheet}
+					>
+						<IconSliders size={22} />
+					</button>
+				) : (
+					<button type="button" className="round" aria-label="Restart level" onClick={onRestart}>
+						<IconRestart size={22} />
+					</button>
+				)}
+				{hud.timeLeft !== null && (
+					<span className={`chip${low ? " chip--warn" : ""}`} aria-label="Time left">
+						<IconClock size={16} />
+						{hud.timeLeft.toFixed(hud.timeLeft < 10 ? 1 : 0)}
+					</span>
+				)}
+			</div>
+		</header>
 	);
 }

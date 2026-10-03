@@ -1,66 +1,61 @@
 <p align="center">
-  <img src="design/logo-1024.png" width="120" alt="RIP IT! logo">
+  <img src="design/icon.svg" width="128" alt="RIP IT! icon: a red cloth ripped down the middle">
 </p>
 
 <h1 align="center">RIP IT!</h1>
 
 <p align="center">
-  <b>A tiny physics playground about tearing cloth apart.</b><br>
-  Grab it, cut it, burn it, soak it. Every fibre is simulated.
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/hero-open.png" width="720" alt="A fresh piece of cloth hanging in RIP IT!">
+  <b>A physics game about tearing cloth apart.</b><br>
+  Grab it, cut it, burn it, soak it, blow it up. Then stitch it back together.
 </p>
 
 ## What is this?
 
-RIP IT! is a relaxing destruction toy. A piece of fabric hangs from a rod, and you get to do the thing everyone secretly wants to do: rip it apart.
+A square of fabric hangs in front of you, and you get to do the thing everyone secretly wants to do: rip it apart.
 
-Every thread is a tiny spring, so tears run, spread and fray like real fabric. Silk floats, paper rips in dead-straight lines, rubber stretches and snaps back. There is nothing to win and nothing to lose. Just rip, listen, relax, and when the cloth is gone, hang a fresh one.
+The cloth is a real 3D simulation. It hangs in pleats, billows in the wind and casts a shadow on the wall behind it. Pull hard enough and it tears, and the tear runs the way a tear in real fabric runs: along the threads, from the weakest point, faster the harder you pull. Denim laughs at bare hands until you snip a notch in its edge. Paper rips dead straight. Latex stretches to three times its length and then snaps.
 
-Shred a cloth completely and you get the confetti party with your final numbers: fibres ripped, pieces, and time.
+There are 24 levels across four worlds, each with a goal and three stars to earn, and a sandbox for when you just want to wreck something.
 
-## Seven fabrics, all different
+## The worlds
+
+| World | Place | What you learn |
+|-------|-------|----------------|
+| 1. Laundry Day | A sunny backyard and a washing line | Ripping by hand, scissors, cutting out shapes |
+| 2. Grand Theatre | Velvet, spotlights, a stage | The blade, unveiling paintings, working against the clock |
+| 3. The Forge | Brick, firelight, sparks | Fire, water, firecrackers, leather and chainmail |
+| 4. Paper Dojo | Shoji screens and tatami | Precision cuts, and mending with a needle |
+
+Goals change from level to level: tear the cloth into pieces, cut a shape free without straying from the line, burn a banner while keeping its crest intact, reveal a painting, or stitch a torn silk back together.
+
+## Ten fabrics
 
 | Fabric | Feel |
 |--------|------|
-| Silk | feather light, floats on the wind, tears easily |
-| Cotton | the classic. tough but fair |
-| Denim | heavy twill, takes real effort |
-| Leather | tough hide, barely notices the wind |
-| Rubber | stretches four times before it snaps |
-| Paper | rips dead straight, burns in seconds |
-| Chainmail | metal rings, clinks and sparks |
+| Cotton | The classic. Rips with a firm pull |
+| Linen | Crisp bedsheet. Tears in long runs |
+| Silk | Feather light, floats on a breath, shreds easily |
+| Velvet | Heavy stage curtain that drinks the light |
+| Denim | Too tough to rip, until you notch it |
+| Burlap | Rough sackcloth. Burns like tinder |
+| Leather | Shrugs off everything but a blade or a blast |
+| Latex | Stretches and stretches, then snaps |
+| Paper | Rips dead straight, burns in seconds, falls apart when wet |
+| Chainmail | Riveted steel rings. Bring bolt cutters |
 
-## Eight tools
+## Nine tools
 
 | Tool | What it does |
 |------|--------------|
-| Hand | pinch the cloth and pull. yank hard and it rips |
-| Scissors | tap to snip, or drag to cut a clean line |
-| Knife | slash fast to cut, slow moves just nudge it |
-| Torch | hold on the cloth to set it on fire |
-| Water | soak it: heavier, sags, tears easier, fire proof |
-| Pin | nail the cloth down anywhere, or unclip it from the rod |
-| Sew | stitch torn seams back together |
-| Blower | hold to blast a gust of air |
-
-## See it in action
-
-| | |
-|---|---|
-| <img src="docs/screenshots/tear-action.png" width="420" alt="A huge tear ripped through the cloth"> <br> Rips spread and fray in real time | <img src="docs/screenshots/torch-fire.png" width="420" alt="The torch setting cloth on fire"> <br> Fire catches, spreads and chars |
-| <img src="docs/screenshots/world-sheet.png" width="420" alt="Fabric and world settings"> <br> Seven fabrics, wind, gravity and stats | <img src="docs/screenshots/mobile-portrait.png" width="220" alt="RIP IT! on a phone"> <br> Built for phones first |
-
-## The fun stuff
-
-- A real time Verlet cloth simulation: every fibre is a spring, every tear is physical
-- Tear juice: freeze frames on big rips, haptic buzzes on your phone, sparks, thumps and snips
-- Sound is generated live: silk whispers, denim rumbles, chainmail clinks
-- Slow motion mode for that one perfect pull
-- Wind, gravity and slow-mo sliders to make the cloth do what you want
-- Fully shred a cloth for the confetti payoff
+| Hand | Grab and pull. On a phone, two fingers rip it apart |
+| Scissors | Drag for a clean straight cut at any angle. Tap for a snip |
+| Blade | Slash fast to slice. Slow strokes won't bite |
+| Torch | Hold to light it. Fire climbs |
+| Water | Soak the cloth: heavier, weaker, fireproof |
+| Firecracker | Stick it on, stand back |
+| Pin | Pin the cloth anywhere, or pull a pin out |
+| Needle | Drag along a tear to stitch it shut |
+| Blower | A blast of air |
 
 ## Get it
 
@@ -81,22 +76,35 @@ Other useful commands:
 
 ```bash
 npm run build        # typecheck + production build
-npm run test         # unit tests
+npm run test         # physics unit tests
 npm run lint         # biome checks
 ```
 
 Android builds run in CI only (GitHub Actions), so you do not need Android Studio.
 
+The app icons in `src-tauri/icons` are generated from one vector source. CI does this on every release; to refresh them locally:
+
+```bash
+npx tauri icon design/icon.svg --output src-tauri/icons
+```
+
 ## Under the hood
 
-Tauri 2, React 18, TypeScript, Vite, styled components. The cloth engine is a hand written Verlet integration sim with tear, burn, wet, cut and sew passes. Sound effects are synthesized on the fly with the Web Audio API. No game engine, no assets to load, it is all code.
+Tauri 2, React 18, TypeScript, Vite. No game engine and no image or sound files: every texture, backdrop and sound effect is generated in code.
+
+- **Cloth**: an XPBD solver over a triangle mesh, 720 small steps a second. Tearing works by splitting mesh points so neighbouring triangles stop sharing them, which is why a tear opens across the direction of stress and keeps running from its tip. Scissors slide mesh points onto the blade's path, so cuts are straight at any angle instead of following the grid.
+- **Rendering**: WebGL 2. Each fabric has its own procedural weave (plain, twill, satin, velvet pile, leather grain, paper fibre, ring mail) with normal mapping, sheen, translucency and a real shadow map. Fire eats the cloth with a glowing ember edge. HDR with bloom, then filmic tone mapping.
+- **Sound**: synthesised live with Web Audio. A rip is built from tiny grains of noise fired per broken fibre, so it follows the tear itself.
+- **Battery**: the game drops to 30 fps when nothing is happening, stops entirely in the background, and steps its own graphics quality down on devices that struggle.
 
 ```
-src/sim      cloth physics engine
-src/audio    generated sound effects
-src/ui       dock, sheets, canvas shell
-src/theme    design tokens
-src-tauri    Rust host (desktop + android)
+src/engine/cloth   the simulation: solver, tearing, cutting, fire, sewing
+src/engine/gfx     renderer, shaders, procedural fabrics and backdrops
+src/engine/audio   synthesised sound
+src/engine/Game.ts the loop, tools and objectives
+src/game           levels, progress, sandbox presets
+src/ui             screens and HUD
+src-tauri          Rust host (desktop + android)
 ```
 
 ## License

@@ -13,18 +13,7 @@ const host = process.env.TAURI_DEV_HOST || "localhost";
 
 export default defineConfig((): UserConfig => {
 	return {
-		plugins: [
-			react({
-				babel: {
-					plugins: [
-						[
-							"babel-plugin-styled-components",
-							{ displayName: true, fileName: true },
-						],
-					],
-				},
-			}),
-		],
+		plugins: [react()],
 		define: {
 			"import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version),
 		},
@@ -42,10 +31,11 @@ export default defineConfig((): UserConfig => {
 			watch: { ignored: ["**/src-tauri/**"] },
 		},
 		build: {
-			target:
-				process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "safari13",
+			// WebGL2 + modern syntax: every WebView that can run the game supports this
+			target: "es2020",
 			minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
 			sourcemap: !!process.env.TAURI_DEBUG,
+			chunkSizeWarningLimit: 900,
 		},
 		test: {
 			globals: true,

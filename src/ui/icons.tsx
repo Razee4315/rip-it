@@ -1,40 +1,23 @@
-import type { ToolId } from "@/sim/tools";
+/** Hand-drawn icon set: 24-unit grid, round joins, currentColor. */
+import type { ToolId } from "@/engine/tools";
+import type { Objective } from "@/game/types";
 import type { ReactNode, SVGProps } from "react";
 
-type Props = SVGProps<SVGSVGElement> & { size?: number };
+type P = { size?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
-/** Filled high-contrast silhouettes for dock (rip-game). */
-function Svg({ size = 26, children, ...rest }: Props & { children: ReactNode }) {
+function Svg({ size = 24, children, ...rest }: P & { children: ReactNode }) {
 	return (
 		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			viewBox="0 0 24 24"
 			width={size}
 			height={size}
-			fill="currentColor"
-			stroke="none"
-			aria-hidden="true"
-			{...rest}
-		>
-			{children}
-		</svg>
-	);
-}
-
-/** Outline helper for non-tool chrome icons */
-function StrokeSvg({ size = 24, children, ...rest }: Props & { children: ReactNode }) {
-	return (
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
 			viewBox="0 0 24 24"
-			width={size}
-			height={size}
 			fill="none"
 			stroke="currentColor"
-			strokeWidth="2"
+			strokeWidth={2}
 			strokeLinecap="round"
 			strokeLinejoin="round"
 			aria-hidden="true"
+			focusable="false"
 			{...rest}
 		>
 			{children}
@@ -42,173 +25,294 @@ function StrokeSvg({ size = 24, children, ...rest }: Props & { children: ReactNo
 	);
 }
 
-export const IconHand = (p: Props) => (
+// ── tools ───────────────────────────────────────────────────────
+export const IconHand = (p: P) => (
 	<Svg {...p}>
-		<path d="M8.2 11.2V7.1c0-.85.7-1.55 1.55-1.55S11.3 6.25 11.3 7.1v3.4h1.15V5.85c0-.85.7-1.55 1.55-1.55s1.55.7 1.55 1.55V11h1.1V7.6c0-.85.7-1.55 1.55-1.55s1.55.7 1.55 1.55v6.4c0 3.05-2.35 5.55-5.35 5.55h-.55c-2.85 0-5.2-2.05-5.7-4.8L7.05 12.4A1.75 1.75 0 0 1 8.85 10.3c.45 0 .88.16 1.22.45l.13.12V11.2H8.2z" />
+		<path d="M8 13V5.6a1.5 1.5 0 0 1 3 0V11" />
+		<path d="M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5" />
+		<path d="M14 11V5.6a1.5 1.5 0 0 1 3 0V12" />
+		<path d="M17 12V8.2a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1.3a6 6 0 0 1-4.6-2.2l-3.5-4.4a1.6 1.6 0 0 1 2.4-2.1L8 15.2" />
 	</Svg>
 );
 
-export const IconScissors = (p: Props) => (
+export const IconScissors = (p: P) => (
 	<Svg {...p}>
-		{/* Open blades X + ring pivots */}
-		<path d="M8.4 9.1 19.6 17.2l-1.35 1.85L7.05 10.95z" />
-		<path d="M8.4 14.9 19.6 6.8l-1.35-1.85L7.05 13.05z" />
-		<circle cx="6.2" cy="6.4" r="2.55" />
-		<circle cx="6.2" cy="17.6" r="2.55" />
-		<circle cx="6.2" cy="6.4" r="1" fill="#0c0e12" />
-		<circle cx="6.2" cy="17.6" r="1" fill="#0c0e12" />
+		<circle cx="6" cy="6.2" r="2.7" />
+		<circle cx="6" cy="17.8" r="2.7" />
+		<path d="M8.3 7.8 20.5 17" />
+		<path d="M8.3 16.2 20.5 7" />
 	</Svg>
 );
 
-export const IconKnife = (p: Props) => (
+export const IconBlade = (p: P) => (
 	<Svg {...p}>
-		<path d="M3.6 15.4 14.8 4.2c.55-.55 1.45-.55 2 0l3 3c.55.55.55 1.45 0 2L8.6 20.4c-.85.85-2.2.7-2.85-.35L3.6 15.4z" />
 		<path
-			d="M14.9 4.3l1.5-1.5a1.7 1.7 0 0 1 2.4 0l1.5 1.5a1.7 1.7 0 0 1 0 2.4l-1.5 1.5-3.9-3.9z"
-			opacity="0.92"
+			d="M9.2 14.8 19.6 4.4a1.5 1.5 0 0 1 2.1 2.1c-1.9 4-5.2 8-10.2 11z"
+			fill="currentColor"
+			fillOpacity={0.22}
+		/>
+		<path d="M3 21l6.2-6.2" strokeWidth={3} />
+		<path d="M7.4 13l3.6 3.6" />
+	</Svg>
+);
+
+export const IconTorch = (p: P) => (
+	<Svg {...p}>
+		<path
+			d="M12 2.8c.9 3.3 5.2 5.3 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-2 .9-3.4 2.1-4.4.2 1.5.8 2.5 1.8 2.8-.6-2.9.1-6.2 1.3-8.6z"
+			fill="currentColor"
+			fillOpacity={0.22}
+		/>
+		<path d="M12 21.2a2.6 2.6 0 0 0 2.6-2.6c0-1.6-1.4-2.3-2.6-4.1-1.2 1.8-2.6 2.5-2.6 4.1a2.6 2.6 0 0 0 2.6 2.6z" />
+	</Svg>
+);
+
+export const IconWater = (p: P) => (
+	<Svg {...p}>
+		<path
+			d="M12 3s6.2 6.3 6.2 11.1a6.2 6.2 0 0 1-12.4 0C5.8 9.3 12 3 12 3z"
+			fill="currentColor"
+			fillOpacity={0.22}
+		/>
+		<path d="M9.2 14.6a2.9 2.9 0 0 0 2.6 2.7" />
+	</Svg>
+);
+
+export const IconCracker = (p: P) => (
+	<Svg {...p}>
+		<rect
+			x="5.6"
+			y="9.4"
+			width="7.4"
+			height="12"
+			rx="1.8"
+			transform="rotate(-24 9.3 15.4)"
+			fill="currentColor"
+			fillOpacity={0.22}
+		/>
+		<path d="M6 13.2l6.6-3" />
+		<path d="M12.6 8.4c.9-2.3 2.6-3 4.6-2.6" />
+		<path d="M20 2.6v2.2M22.4 6h-2.2M21.6 3.4l-1.4 1.4" />
+	</Svg>
+);
+
+export const IconPin = (p: P) => (
+	<Svg {...p}>
+		<path d="M9 3.6h6l-1 5.2 3.2 3.2v2H6.8v-2L10 8.8z" fill="currentColor" fillOpacity={0.22} />
+		<path d="M12 14v7.4" />
+	</Svg>
+);
+
+export const IconNeedle = (p: P) => (
+	<Svg {...p}>
+		<path d="M20.6 3.4 5.4 18.6" />
+		<path d="M5.4 18.6 3 21" strokeWidth={1.4} />
+		<path
+			d="M18.4 5.6c2.6 1.8 2.8 4.9.2 6.6-2.4 1.6-3.8 3.6-3 6.4.3 1.1 1 1.9 1.9 2.4"
+			strokeWidth={1.5}
+		/>
+		<path d="M17.7 4.9l1.4 1.4" strokeWidth={3} />
+	</Svg>
+);
+
+export const IconBlower = (p: P) => (
+	<Svg {...p}>
+		<path d="M2.6 8h9.6a2.6 2.6 0 1 0-2.6-2.6" />
+		<path d="M2.6 12h15.6a2.7 2.7 0 1 1-2.7 2.7" />
+		<path d="M2.6 16h7.2a2.5 2.5 0 1 1-2.5 2.5" />
+	</Svg>
+);
+
+const TOOL_ICONS: Record<ToolId, (p: P) => JSX.Element> = {
+	hand: IconHand,
+	scissors: IconScissors,
+	blade: IconBlade,
+	torch: IconTorch,
+	water: IconWater,
+	cracker: IconCracker,
+	pin: IconPin,
+	needle: IconNeedle,
+	blower: IconBlower,
+};
+
+export function ToolIcon({ tool, size }: { tool: ToolId; size?: number }) {
+	const C = TOOL_ICONS[tool];
+	return <C size={size} />;
+}
+
+// ── interface ───────────────────────────────────────────────────
+export const IconPlay = (p: P) => (
+	<Svg {...p}>
+		<path d="M7.5 4.6v14.8L20 12z" fill="currentColor" />
+	</Svg>
+);
+
+export const IconPause = (p: P) => (
+	<Svg {...p}>
+		<path d="M8 5v14M16 5v14" strokeWidth={3.4} />
+	</Svg>
+);
+
+export const IconRestart = (p: P) => (
+	<Svg {...p}>
+		<path d="M4 12a8 8 0 1 0 2.7-6" />
+		<path d="M3.6 3.6v5h5" />
+	</Svg>
+);
+
+export const IconGrid = (p: P) => (
+	<Svg {...p}>
+		<rect x="3.5" y="3.5" width="7" height="7" rx="1.8" />
+		<rect x="13.5" y="3.5" width="7" height="7" rx="1.8" />
+		<rect x="3.5" y="13.5" width="7" height="7" rx="1.8" />
+		<rect x="13.5" y="13.5" width="7" height="7" rx="1.8" />
+	</Svg>
+);
+
+export const IconSliders = (p: P) => (
+	<Svg {...p}>
+		<path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+		<circle cx="15" cy="7" r="2.2" />
+		<circle cx="9" cy="17" r="2.2" />
+	</Svg>
+);
+
+export const IconSound = (p: P) => (
+	<Svg {...p}>
+		<path d="M4 9.5v5h3.4L12 18.6V5.4L7.4 9.5z" fill="currentColor" fillOpacity={0.22} />
+		<path d="M15.6 9a4.2 4.2 0 0 1 0 6M18.4 6.4a8 8 0 0 1 0 11.2" />
+	</Svg>
+);
+
+export const IconSoundOff = (p: P) => (
+	<Svg {...p}>
+		<path d="M4 9.5v5h3.4L12 18.6V5.4L7.4 9.5z" fill="currentColor" fillOpacity={0.22} />
+		<path d="M16 9.5l5 5M21 9.5l-5 5" />
+	</Svg>
+);
+
+export const IconVibrate = (p: P) => (
+	<Svg {...p}>
+		<rect x="8" y="3.5" width="8" height="17" rx="2" />
+		<path d="M4.4 9v6M2 10.6v2.8M19.6 9v6M22 10.6v2.8" />
+	</Svg>
+);
+
+export const IconStar = ({ filled = true, ...p }: P & { filled?: boolean }) => (
+	<Svg {...p} strokeWidth={filled ? 0 : 1.8}>
+		<path
+			d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5l-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9z"
+			fill={filled ? "currentColor" : "none"}
 		/>
 	</Svg>
 );
 
-export const IconTorch = (p: Props) => (
+export const IconLock = (p: P) => (
 	<Svg {...p}>
-		{/* Nozzle / body */}
-		<path d="M9 14.2h6v4.4a2.4 2.4 0 0 1-2.4 2.4h-1.2A2.4 2.4 0 0 1 9 18.6v-4.4z" />
-		{/* Flame */}
-		<path d="M12 3.6c2.8 2.6 4.6 4.8 4.6 7.6 0 1.55-.7 2.85-1.85 3.55H9.25C8.1 14.05 7.4 12.75 7.4 11.2c0-2.8 1.8-5 4.6-7.6z" />
+		<rect x="5" y="10.5" width="14" height="10" rx="2.4" fill="currentColor" fillOpacity={0.22} />
+		<path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+	</Svg>
+);
+
+export const IconBack = (p: P) => (
+	<Svg {...p}>
+		<path d="M14.5 5.5 8 12l6.5 6.5" />
+	</Svg>
+);
+
+export const IconNext = (p: P) => (
+	<Svg {...p}>
+		<path d="M5 12h13M12.5 6l6 6-6 6" />
+	</Svg>
+);
+
+export const IconCheck = (p: P) => (
+	<Svg {...p}>
+		<path d="M5 12.5l4.6 4.6L19 7.6" />
+	</Svg>
+);
+
+export const IconCross = (p: P) => (
+	<Svg {...p}>
+		<path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+	</Svg>
+);
+
+export const IconClock = (p: P) => (
+	<Svg {...p}>
+		<circle cx="12" cy="13" r="7.6" />
+		<path d="M12 9v4.2l2.6 1.7M9.6 2.8h4.8" />
+	</Svg>
+);
+
+export const IconShield = (p: P) => (
+	<Svg {...p}>
 		<path
-			d="M12 7.2c1.1 1.1 1.7 2 1.7 3.1 0 .7-.35 1.25-.85 1.55h-1.7c-.5-.3-.85-.85-.85-1.55 0-1.1.6-2 1.7-3.1z"
-			fill="#0c0e12"
-			opacity="0.35"
+			d="M12 3l7 2.6v5.6c0 4.4-2.9 7.9-7 9.8-4.1-1.9-7-5.4-7-9.8V5.6z"
+			fill="currentColor"
+			fillOpacity={0.22}
 		/>
 	</Svg>
 );
 
-export const IconWater = (p: Props) => (
+export const IconEye = (p: P) => (
 	<Svg {...p}>
-		<path d="M12 2.8s6.4 7.2 6.4 11.6A6.4 6.4 0 0 1 12 20.8a6.4 6.4 0 0 1-6.4-6.4C5.6 10 12 2.8 12 2.8z" />
+		<path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" />
+		<circle cx="12" cy="12" r="2.8" fill="currentColor" fillOpacity={0.3} />
+	</Svg>
+);
+
+export const IconSplit = (p: P) => (
+	<Svg {...p}>
+		<path d="M11 3 4 5v14l5 2 1.6-5L8 12.6l3-3.6-1.6-3z" fill="currentColor" fillOpacity={0.22} />
 		<path
-			d="M9.8 13.6c.45 1.9 1.9 3.1 3.7 3.1"
-			fill="none"
-			stroke="#0c0e12"
-			strokeWidth="1.6"
-			strokeLinecap="round"
-			opacity="0.35"
+			d="M15 3.6 20 5v14l-6.5 2 1.3-5.4-2-3 2.6-3.6-1.4-3z"
+			fill="currentColor"
+			fillOpacity={0.22}
 		/>
 	</Svg>
 );
 
-export const IconPin = (p: Props) => (
+export const IconDrop = (p: P) => (
 	<Svg {...p}>
-		<path d="M11.15 14.6h1.7V21h-1.7z" />
-		<path d="M7.6 3.2h8.8l-1.05 6.2 3.05 2.55v2.65H5.6v-2.65L8.65 9.4 7.6 3.2z" />
+		<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />
 	</Svg>
 );
 
-export const IconNeedle = (p: Props) => (
+export const IconDashed = (p: P) => (
 	<Svg {...p}>
-		<path d="M16.8 2.9 4.6 18.2l2.1 2.1L19 5.1z" />
-		<circle cx="18.3" cy="4.1" r="2.1" />
-		<circle cx="18.3" cy="4.1" r="0.85" fill="#0c0e12" />
-	</Svg>
-);
-
-export const IconFan = (p: Props) => (
-	<Svg {...p}>
-		<circle cx="10.5" cy="12" r="2.2" />
-		<path d="M10.5 9.4c2.4-4.6 6-6.1 8.5-4.8-1.6 2.8-1.2 5.8-.7 7.1L10.5 9.4z" />
-		<path d="M12.4 13.2c3.8 1.8 5.2 4.8 4.4 7.2-3-.8-5.4-2.4-6.5-4.2l2.1-3z" />
-		<path d="M8.6 13.1C7 17.2 4 19 1.4 18.4c1.1-2.8 2.9-4.8 4.6-5.9l2.6.6z" />
-		{/* Gust ticks */}
+		<circle cx="12" cy="12" r="8" strokeDasharray="3.2 3.2" />
 		<path
-			d="M18.2 9.2h3.2M18.8 12h3.6M18.2 14.8h2.8"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.8"
-			strokeLinecap="round"
+			d="M12 9.2l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"
+			fill="currentColor"
+			stroke="none"
 		/>
 	</Svg>
 );
 
-export const IconRefresh = (p: Props) => (
-	<StrokeSvg {...p}>
-		<path d="M19 12a7 7 0 1 1-2-4.9" />
-		<path d="M19 5v5h-5" />
-	</StrokeSvg>
-);
-
-export const IconSpeaker = (p: Props) => (
-	<StrokeSvg {...p}>
-		<path d="M4.5 9.5h3.2L12 6.2v11.6L7.7 14.5H4.5z" />
-		<path d="M15 9.2a3.4 3.4 0 0 1 0 5.6" />
-		<path d="M17.2 7a6 6 0 0 1 0 10" />
-	</StrokeSvg>
-);
-
-export const IconSpeakerOff = (p: Props) => (
-	<StrokeSvg {...p}>
-		<path d="M4.5 9.5h3.2L12 6.2v11.6L7.7 14.5H4.5z" />
-		<path d="M15.5 10.5l4 4M19.5 10.5l-4 4" />
-	</StrokeSvg>
-);
-
-export const IconMore = (p: Props) => (
+export const IconInfinity = (p: P) => (
 	<Svg {...p}>
-		<circle cx="5" cy="12" r="2.1" />
-		<circle cx="12" cy="12" r="2.1" />
-		<circle cx="19" cy="12" r="2.1" />
+		<path d="M7 8.5c-2.2 0-4 1.6-4 3.5s1.8 3.5 4 3.5c4 0 6-7 10-7 2.2 0 4 1.6 4 3.5s-1.8 3.5-4 3.5c-4 0-6-7-10-7z" />
 	</Svg>
 );
 
-export const IconParty = (p: Props) => (
-	<StrokeSvg {...p}>
-		<path d="M12 4.5v2.2M12 17.3v2.2M4.5 12h2.2M17.3 12h2.2" />
-		<path d="M7.1 7.1l1.5 1.5M15.4 15.4l1.5 1.5M7.1 16.9l1.5-1.5M15.4 8.6l1.5-1.5" />
-		<circle cx="12" cy="12" r="2.4" />
-		<circle cx="12" cy="12" r="5.6" />
-	</StrokeSvg>
-);
-
-export const IconLogo = (p: Props) => (
-	<StrokeSvg {...p}>
-		<circle cx="7" cy="7" r="2.3" />
-		<circle cx="7" cy="17" r="2.3" />
-		<path d="M9 8.4 18.8 16.6M9 15.6 18.8 7.4" />
-	</StrokeSvg>
-);
-
-export const IconSliders = (p: Props) => (
-	<StrokeSvg {...p}>
-		<path d="M4 8h10M18 8h2M4 16h2M10 16h10" />
-		<circle cx="16" cy="8" r="2.2" />
-		<circle cx="8" cy="16" r="2.2" />
-	</StrokeSvg>
-);
-
-export const IconSlow = (p: Props) => (
-	<StrokeSvg {...p}>
-		<ellipse cx="12" cy="13.5" rx="6.2" ry="4.4" />
-		<path d="M8.2 10.2c-.8-2.2.2-4.4 2.4-4.4 1.2 0 1.8.7 2.4 1.6.6-.9 1.2-1.6 2.4-1.6 2.2 0 3.2 2.2 2.4 4.4" />
-	</StrokeSvg>
-);
-
-export function toolIcon(id: ToolId, size = 26) {
-	switch (id) {
-		case "hand":
-			return <IconHand size={size} />;
-		case "scissors":
-			return <IconScissors size={size} />;
-		case "knife":
-			return <IconKnife size={size} />;
-		case "torch":
+export function ObjectiveIcon({ type, size }: { type: Objective["type"]; size?: number }) {
+	switch (type) {
+		case "pieces":
+			return <IconSplit size={size} />;
+		case "clear":
+			return <IconDrop size={size} />;
+		case "burn":
 			return <IconTorch size={size} />;
-		case "water":
-			return <IconWater size={size} />;
-		case "pin":
-			return <IconPin size={size} />;
-		case "needle":
+		case "cutout":
+			return <IconDashed size={size} />;
+		case "protect":
+			return <IconShield size={size} />;
+		case "reveal":
+			return <IconEye size={size} />;
+		case "mend":
 			return <IconNeedle size={size} />;
-		case "fan":
-			return <IconFan size={size} />;
+		default:
+			return <IconInfinity size={size} />;
 	}
 }

@@ -1,7 +1,7 @@
 [package]
 name = "rip-it"
-version = "0.1.7"
-description = "RIP IT! cloth-tearing playground"
+version = "1.0.0"
+description = "RIP IT! — a physics game about tearing cloth apart"
 authors = ["Razee4315"]
 edition = "2021"
 rust-version = "1.77"

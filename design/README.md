@@ -1,18 +1,41 @@
-# RIP IT! brand assets (rip-ui)
+# RIP IT! brand assets
 
-## Logo mark
-Minimal scissors mark in amber `#e8a13a` on `#0c0e12`.
+## App icon
 
-| File | Use |
-|------|-----|
-| `logo-mark-1024.svg` | Vector source |
-| `logo-1024.png` | **1024×1024** bake input for `tauri icon` + Android adaptive |
+`icon.svg` is the single source for every icon size. A square of red cloth ripped down the middle, with light breaking through the tear.
 
-### Adaptive icon notes for rip-ci
-- Full-bleed dark background (no transparency).
-- Mark centered in the **66% safe zone** (important content within ~672px diameter).
-- Delete template foreground vectors after bake; copy mipmaps over `gen` res.
-- In-app UI mark: `public/assets/icons/logo.svg` + `IconLogo` in `src/ui/icons.tsx`.
+- Full-bleed dark background, no transparency.
+- Everything that matters sits inside the central 66% (Android adaptive safe zone).
+- Shapes, gradients and blurs only. No text and no fonts, so it renders the same everywhere.
 
-## Tokens
-`src/theme/tokens.ts` — prototype palette + `touch.minTargetPx: 44` + juice colors.
+Generate the platform icons from it:
+
+```bash
+npx tauri icon design/icon.svg --output src-tauri/icons
+```
+
+The release workflows run this themselves. `public/icon.svg` is a copy used as the web favicon; keep the two in sync.
+
+## Colour
+
+| Token | Hex | Use |
+|-------|-----|-----|
+| Ink | `#0b0a0d` | Background, launcher background |
+| Cream | `#f6efe2` | Text |
+| Signal red | `#ff4a2b` | Primary actions, the selected tool |
+| Ember | `#ff8a3c` | Progress, heat |
+| Gold | `#ffc24b` | Stars |
+
+The tokens live at the top of `src/styles/app.css`.
+
+## Type
+
+- **Anton** for the wordmark, headings and numbers. Always uppercase.
+- **Outfit** for everything else.
+
+Both are bundled with the app (`@fontsource`), so nothing is fetched at runtime.
+
+## Motifs
+
+- The wordmark is torn across the middle (two clipped halves, slightly offset).
+- Buttons and cards carry a dashed line just inside their edge, like stitching on a sewn-on patch.

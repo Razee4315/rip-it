@@ -88,7 +88,7 @@ jobs:
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
 
       - name: Generate icons from logo source
-        run: npx tauri icon design/logo-1024.png --output src-tauri/icons
+        run: npx tauri icon design/icon.svg --output src-tauri/icons
 
       - name: Init Android project
         run: npx tauri android init
@@ -108,7 +108,7 @@ jobs:
           find "$DEST" -type f \( -path '*/drawable*/ic_launcher_foreground.xml' -o -path '*/drawable*/ic_launcher_background.xml' \) -delete || true
           mkdir -p "$DEST/values"
           if ! grep -Rqs 'name="ic_launcher_background"' "$DEST/values"; then
-            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' '    <color name="ic_launcher_background">#0c0e12</color>' '</resources>' > "$DEST/values/ic_launcher_background.xml"
+            printf '%s\n' '<?xml version="1.0" encoding="utf-8"?>' '<resources>' '    <color name="ic_launcher_background">#0b0a0d</color>' '</resources>' > "$DEST/values/ic_launcher_background.xml"
           fi
           echo "Android res after icon overlay:"
           find "$DEST" -iname '*ic_launcher*' | sort
