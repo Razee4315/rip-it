@@ -122,6 +122,8 @@ export class Cloth {
 	scr: Float32Array;
 	private floorOff: Float32Array;
 	private stroke: Uint8Array;
+	/** Local fracture front. A cut must never authorize failure at a distant mount. */
+	private tearUntil: Float32Array;
 	private freeP: Int32Array;
 	private nFreeP = 0;
 
@@ -203,9 +205,13 @@ export class Cloth {
 	private cand = new Int32Array(8);
 	private candR = new Float32Array(8);
 	private stepN = 0;
-	/** seconds for which tears may start anywhere (see substep) */
+	/** seconds until the last local fracture front expires */
 	private gate = 0;
 	private strokeLast = -1;
+	private strokeFirst = -1;
+	private strokeX = Number.NaN;
+	private strokeY = 0;
+	private strokeLength = 0;
 	private compliance: number;
 
 	constructor(b: ClothBuild) {
@@ -252,6 +258,7 @@ export class Cloth {
 		this.scr = new Float32Array(mp * 2);
 		this.floorOff = new Float32Array(mp);
 		this.stroke = new Uint8Array(mp);
+		this.tearUntil = new Float32Array(mp);
 		this.freeP = new Int32Array(mp);
 		this.parent = new Int32Array(mp);
 		this.compArea = new Float32Array(mp);
@@ -488,6 +495,7 @@ export class Cloth {
 		this.fray[p] = this.fray[src];
 		this.seam[p] = this.seam[src];
 		this.stroke[p] = this.stroke[src];
+		this.tearUntil[p] = this.tearUntil[src];
 		this.floorOff[p] = 0.002 + hash01(p * 7 + 3) * 0.007;
 		this.fanN[p] = 0;
 		this.uvVersion++;
@@ -496,6 +504,7 @@ export class Cloth {
 
 	private killParticle(p: number) {
 		this.alive[p] = 0;
+		this.tearUntil[p] = 0;
 		this.burning[p] = 0;
 		this.pin[p] = PIN_NONE;
 		this.fanN[p] = 0;
@@ -755,7 +764,8 @@ export class Cloth {
 		}
 		if (this.eAlive[e]) this.eDmg[e] = Math.min(1, this.eDmg[e] + 0.25);
 		this.tearCount++;
-		if (this.gate < 0.45) this.gate = 0.45;
+		this.armTear(v, 0.45);
+		if (v2 >= 0) this.armTear(v2, 0.45);
 		this.pushEvent(EV_TEAR, mx, my, mz, nx, ny, nz, mag);
 	}
 
@@ -1075,8 +1085,8 @@ export class Cloth {
 			vel[i + 2] = (pos[i + 2] - prev[i + 2]) * inv;
 		}
 
-		// Cloth only rips because of something done to it: while a hand is pulling, or for a
-		// moment after a cut, a blast, a burn or another rip. Wind and weight alone never start one.
+		// Pulls start rips near the hand; existing rips, burns and blasts advance locally.
+		// Precision tools only cut along their path. Weight at a peg cannot start a remote rip.
 		if (this.gate > 0) this.gate -= dt;
 		if (
 			this.tearOn &&
@@ -1099,9 +1109,15 @@ export class Cloth {
 			candR = this.candR;
 		const K = 6;
 		let n = 0;
-		const anywhere = this.gate > 0;
 		for (let e = 0; e < this.ne; e++) {
 			if (!eAlive[e]) continue;
+			if (
+				this.tearUntil[ea[e]] <= this.time &&
+				this.tearUntil[eb[e]] <= this.time &&
+				!this.nearHand(ea[e] * 3) &&
+				!this.nearHand(eb[e] * 3)
+			)
+				continue;
 			const limEx = (eThr[e] - 1) * eDmg[e];
 			const a = ea[e] * 3,
 				b = eb[e] * 3;
@@ -1114,8 +1130,6 @@ export class Cloth {
 			const ex = Math.sqrt(d2) / eRest[e] - 1;
 			const lim = limEx * (1 - wetWeak * 0.5 * (wet[ea[e]] + wet[eb[e]]));
 			if (ex > lim) {
-				// a pull only starts rips within reach of the hand doing the pulling
-				if (!anywhere && !this.nearHand(a)) continue;
 				// keep the K worst offenders, sorted
 				const r = ex / lim;
 				let k: number;
@@ -1147,7 +1161,26 @@ export class Cloth {
 	}
 
 	private isPulling(g: Grab): boolean {
-		return Math.hypot(g.tx - g.sx, g.ty - g.sy, g.tz - g.sz) > this.pullThreshold;
+		const dx = g.tx - g.sx,
+			dy = g.ty - g.sy,
+			dz = g.tz - g.sz;
+		return dx * dx + dy * dy + dz * dz > this.pullThreshold * this.pullThreshold;
+	}
+
+	/** Advance one ring of connected triangles, including both lips of a new rip. */
+	private armTear(v: number, duration: number) {
+		if (!this.alive[v]) return;
+		const until = this.time + duration;
+		this.tearUntil[v] = Math.max(this.tearUntil[v], until);
+		const base = v * MAX_FAN;
+		for (let k = 0; k < this.fanN[v]; k++) {
+			const t = this.fan[base + k] * 3;
+			for (let j = 0; j < 3; j++) {
+				const p = this.tri[t + j];
+				this.tearUntil[p] = Math.max(this.tearUntil[p], until);
+			}
+		}
+		this.gate = Math.max(this.gate, duration);
 	}
 
 	/** Is the particle at array offset i within reach of a hand holding the cloth? */
@@ -1337,12 +1370,12 @@ export class Cloth {
 			pz = this.pos[v * 3 + 2];
 		for (let k = 0; k < n; k++) {
 			const T = ft[k];
+			for (let j = 0; j < 3; j++) this.armTear(this.tri[T * 3 + j], 0.6);
 			this.burntArea += this.triArea[T];
 			this.killTri(T, 0);
 		}
 		if (n) {
 			this.pushEvent(EV_BURN, px, py, pz, 0, 1, 0, n);
-			if (this.gate < 0.6) this.gate = 0.6;
 		}
 	}
 
@@ -1472,6 +1505,29 @@ export class Cloth {
 	beginStroke() {
 		this.stroke.fill(0, 0, this.np);
 		this.strokeLast = -1;
+		this.strokeFirst = -1;
+		this.strokeX = Number.NaN;
+		this.strokeLength = 0;
+	}
+
+	/** A notch concentrates a later hand pull at its unbroken tip. */
+	endStroke() {
+		if (this.strokeLast === this.strokeFirst) return;
+		for (const v of [this.strokeFirst, this.strokeLast]) {
+			// Crack tips are borders too. Exclude the original hem, rather than
+			// excluding every new border created by the knife itself.
+			if (
+				v >= 0 &&
+				this.alive[v] &&
+				!this.pin[v] &&
+				this.uv[v * 2] > 0.02 &&
+				this.uv[v * 2] < 0.98 &&
+				this.uv[v * 2 + 1] > 0.02 &&
+				this.uv[v * 2 + 1] < 0.98
+			) {
+				this.weakenAround(v, 0.6);
+			}
+		}
 	}
 
 	/**
@@ -1485,10 +1541,22 @@ export class Cloth {
 			dy = y1 - y0;
 		const len2 = dx * dx + dy * dy;
 		if (len2 < 1e-6) return 0;
-		const minx = Math.min(x0, x1),
-			maxx = Math.max(x0, x1),
-			miny = Math.min(y0, y1),
-			maxy = Math.max(y0, y1);
+		if (!Number.isFinite(this.strokeX)) {
+			this.strokeX = x0;
+			this.strokeY = y0;
+		}
+		this.strokeLength += Math.sqrt(len2);
+		const closing =
+			this.strokeFirst >= 0 &&
+			this.strokeLength > 24 &&
+			Math.hypot(x1 - this.strokeX, y1 - this.strokeY) < 2;
+		// Projection is stored in float32. Keep the broad phase at least as tolerant
+		// as the intersection test, especially at the two exact fabric hems.
+		const epsilon = Math.max(0.001, Math.sqrt(len2) * 1e-4);
+		const minx = Math.min(x0, x1) - epsilon,
+			maxx = Math.max(x0, x1) + epsilon,
+			miny = Math.min(y0, y1) - epsilon,
+			maxy = Math.max(y0, y1) + epsilon;
 
 		// 1. every edge the blade crosses, ordered along the stroke
 		const hits: number[] = [];
@@ -1509,7 +1577,7 @@ export class Cloth {
 				hitT.push(t);
 			}
 		}
-		if (hits.length === 0) return 0;
+		if (hits.length === 0 && !closing) return 0;
 		const order = hits.map((_, i) => i).sort((p, q) => hitT[p] - hitT[q]);
 
 		// 2. walk the crossings; pull the nearer end of each edge onto the blade
@@ -1542,6 +1610,10 @@ export class Cloth {
 		// order the path by where each point actually sits along the blade
 		const along = (v: number) => ((scr[v * 2] - x0) * dx + (scr[v * 2 + 1] - y0) * dy) / len2;
 		flagged.sort((p, q) => along(p) - along(q));
+		if (this.strokeFirst < 0 && flagged.length) this.strokeFirst = flagged[0];
+		// The first crossing may have slid away from the contact. Closing a loop should
+		// meet that same material point, leaving no invisible thread holding a cutout.
+		if (closing && flagged[flagged.length - 1] !== this.strokeFirst) flagged.push(this.strokeFirst);
 		const path: number[] = [];
 		if (this.strokeLast >= 0 && this.alive[this.strokeLast] && flagged[0] !== this.strokeLast)
 			path.push(this.strokeLast);
@@ -1549,39 +1621,94 @@ export class Cloth {
 
 		// 3. sever the edges joining consecutive points on the path
 		let cut = 0;
+		const split = new Set<number>(path);
 		for (let k = 1; k < path.length; k++) {
-			const e = this.findEdge(path[k - 1], path[k]);
-			if (e >= 0 && !this.eCut[e] && this.eT1[e] >= 0) {
-				this.eCut[e] = 1;
-				cut++;
-				const a = ea[e] * 3,
-					b = eb[e] * 3;
-				const pos = this.pos;
-				this.pushEvent(
-					EV_CUT,
-					(pos[a] + pos[b]) / 2,
-					(pos[a + 1] + pos[b + 1]) / 2,
-					(pos[a + 2] + pos[b + 2]) / 2,
-					pos[b] - pos[a],
-					pos[b + 1] - pos[a + 1],
-					pos[b + 2] - pos[a + 2],
-					1,
-				);
+			for (const e of this.strokeEdges(path[k - 1], path[k])) {
+				if (e >= 0 && !this.eCut[e] && this.eT1[e] >= 0) {
+					split.add(ea[e]);
+					split.add(eb[e]);
+					stroke[ea[e]] = stroke[eb[e]] = 1;
+					this.eCut[e] = 1;
+					cut++;
+					const a = ea[e] * 3,
+						b = eb[e] * 3;
+					const pos = this.pos;
+					this.pushEvent(
+						EV_CUT,
+						(pos[a] + pos[b]) / 2,
+						(pos[a + 1] + pos[b + 1]) / 2,
+						(pos[a + 2] + pos[b + 2]) / 2,
+						pos[b] - pos[a],
+						pos[b + 1] - pos[a + 1],
+						pos[b + 2] - pos[a + 2],
+						1,
+					);
+				}
 			}
 		}
 		// 4. let the fans fall apart along the severed edges
-		for (let k = 0; k < path.length; k++) {
-			const v = path[k];
+		for (const v of split) {
 			if (this.alive[v]) {
-				const made = this.splitComponents(v, frayAmt);
-				// keep following whichever copy is still on the stroke
-				if (made && k === path.length - 1) stroke[v] = 1;
+				this.splitComponents(v, frayAmt);
 			}
 		}
 		if (path.length) this.strokeLast = path[path.length - 1];
 		this.cutCount += cut;
-		if (cut && this.gate < 1) this.gate = 1;
 		return cut;
+	}
+
+	/** Fill a one-cell corner where sliding was prevented by triangle health checks. */
+	private strokeEdges(a: number, b: number): number[] {
+		const direct = this.findStrokeEdge(a, b);
+		if (direct >= 0) return [direct];
+		const base = a * MAX_FAN;
+		let best: number[] = [];
+		let score = Number.POSITIVE_INFINITY;
+		const ax = this.scr[a * 2],
+			ay = this.scr[a * 2 + 1];
+		const bx = this.scr[b * 2],
+			by = this.scr[b * 2 + 1];
+		for (let k = 0; k < this.fanN[a]; k++) {
+			const t = this.fan[base + k] * 3;
+			for (let j = 0; j < 3; j++) {
+				const v = this.tri[t + j];
+				if (this.origin[v] === this.origin[a] || this.origin[v] === this.origin[b]) continue;
+				const e0 = this.findStrokeEdge(a, v),
+					e1 = this.findStrokeEdge(v, b);
+				if (e0 < 0 || e1 < 0) continue;
+				const vx = this.scr[v * 2],
+					vy = this.scr[v * 2 + 1];
+				const d = Math.hypot(vx - ax, vy - ay) + Math.hypot(vx - bx, vy - by);
+				if (d < score) {
+					score = d;
+					best = [e0, e1];
+				}
+			}
+		}
+		return best;
+	}
+
+	/** A running cut can continue on either lip after the preceding vertex split. */
+	private findStrokeEdge(a: number, b: number): number {
+		const direct = this.findEdge(a, b);
+		if (direct >= 0) return direct;
+		for (let side = 0; side < 2; side++) {
+			const v = side === 0 ? a : b;
+			const other = this.origin[side === 0 ? b : a];
+			const base = v * MAX_FAN;
+			for (let k = 0; k < this.fanN[v]; k++) {
+				const t = this.fan[base + k] * 3;
+				for (let j = 0; j < 3; j++) {
+					const e = this.triE[t + j];
+					if (
+						(this.ea[e] === v && this.origin[this.eb[e]] === other) ||
+						(this.eb[e] === v && this.origin[this.ea[e]] === other)
+					)
+						return e;
+				}
+			}
+		}
+		return -1;
 	}
 
 	private crossS = 0;
@@ -1602,9 +1729,9 @@ export class Cloth {
 		if (den > -1e-9 && den < 1e-9) return -1;
 		const t = ((ax - x0) * ey - (ay - y0) * ex) / den;
 		const s = ((ax - x0) * dy - (ay - y0) * dx) / den;
-		if (t < 0 || t > 1 || s < -1e-4 || s > 1.0001) return -1;
-		this.crossS = s;
-		return t;
+		if (t < -1e-4 || t > 1.0001 || s < -1e-4 || s > 1.0001) return -1;
+		this.crossS = clamp(s, 0, 1);
+		return clamp(t, 0, 1);
 	}
 
 	/** Slide particle v along edge (pa,pb) to parameter s, if the surrounding mesh stays healthy. */
@@ -1851,7 +1978,6 @@ export class Cloth {
 		const { pos, vel, alive, im } = this;
 		const r2 = radius * radius;
 		const core = radius * 0.3;
-		this.gate = Math.max(this.gate, 1.5);
 		// kill triangles in the core
 		for (let t = 0; t < this.nt; t++) {
 			if (!this.triAlive[t]) continue;
@@ -1874,6 +2000,7 @@ export class Cloth {
 				dz = pos[i + 2] - z;
 			const d2 = dx * dx + dy * dy + dz * dz;
 			if (d2 > r2) continue;
+			this.armTear(p, 1.5);
 			const d = Math.sqrt(d2) || 1e-4;
 			const f = 1 - d / radius;
 			if (im[p] > 0) {
@@ -1999,6 +2126,7 @@ export class Cloth {
 		this.vel.fill(0, 0, this.np * 3);
 		this.prev.set(this.pos.subarray(0, this.np * 3));
 		this.gate = 0;
+		this.tearUntil.fill(0);
 		this.tearOn = tear;
 		this.evN = 0;
 		this.time = 0;

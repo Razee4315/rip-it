@@ -24,7 +24,9 @@ export function useDialog(key: string | null) {
 					'button:not(:disabled), input:not(:disabled), select:not(:disabled), [tabindex="0"]',
 				),
 			).filter((el) => el.getClientRects().length > 0);
-		(focusable()[0] ?? dialog).focus();
+		// The sheet enters from below the viewport. Focusing during that animation
+		// must not scroll the clipped game layer and move the canvas under the HUD.
+		(focusable()[0] ?? dialog).focus({ preventScroll: true });
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key !== "Tab") return;
 			const items = focusable();
@@ -46,7 +48,8 @@ export function useDialog(key: string | null) {
 		return () => {
 			document.removeEventListener("keydown", onKey);
 			for (const [el, value] of inert) el.inert = value;
-			if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+			if (previous instanceof HTMLElement && previous.isConnected)
+				previous.focus({ preventScroll: true });
 		};
 	}, [key]);
 }

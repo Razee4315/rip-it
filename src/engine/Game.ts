@@ -133,7 +133,6 @@ export class Game {
 	private gravScale = 1;
 	private frameMs = 16;
 	private lastInput = 0;
-	private pauseTick = 0;
 	private hiddenStop = false;
 	private slowFrames = 0;
 	private fpsAcc = 0;
@@ -482,7 +481,7 @@ export class Game {
 		if (!c) return;
 		for (let p = 0; p < c.np; p++) {
 			const du = c.uv[p * 2] - u,
-				dv = (c.uv[p * 2 + 1] - v) * (c.height / c.width);
+				dv = c.uv[p * 2 + 1] - v;
 			if (du * du + dv * dv < r * r) c.wet[p] = 1;
 		}
 		c.refreshMass();
@@ -545,9 +544,9 @@ export class Game {
 		//  · a paused game redraws a few times a second
 		//  · when nothing is being touched and nothing is burning, drop to 30 fps
 		if (now - this.last < 1000 / 60 - 0.5) return;
-		if (this.paused && ++this.pauseTick % 12 !== 0) {
-			this.last = now;
-			return;
+		if (this.paused) {
+			const animating = this.particles.n > 0 || Math.abs(this.fade - this.fadeTo) > 0.01;
+			if (now - this.last < 1000 / (animating ? 30 : 5) - 0.5) return;
 		}
 		const c0 = this.cloth;
 		const busy =
@@ -594,7 +593,6 @@ export class Game {
 				this.updateCrackers(simDt);
 				this.drainEvents();
 				this.ambient(simDt);
-				this.particles.update(simDt, this.time);
 			}
 			if (this.started && this.state === "playing") this.stats.time += simDt;
 			this.checkAcc += dt;
@@ -612,6 +610,9 @@ export class Game {
 				if (this.doneTimer < 0) this.finish();
 			}
 		}
+		// Celebrations and loose fibres keep falling behind a result card. Menus still
+		// pause the cloth, the clock and fuel; cosmetic particles fade out naturally.
+		this.particles.update(dt * (this.slowmo && !this.paused ? 0.28 : 1), this.time);
 
 		// effects that decay in real time
 		this.shake *= 0.002 ** dt;
@@ -719,7 +720,7 @@ export class Game {
 				py: y,
 				vx: 0,
 				vy: 0,
-				t: performance.now(),
+				t: e.timeStamp,
 				downX: x,
 				downY: y,
 				travel: 0,
@@ -739,16 +740,19 @@ export class Game {
 			this.toolDown(p);
 			if (p.grab || this.tool !== "hand") this.clothAwake = true;
 		};
-		const move = (e: PointerEvent) => {
+		const movePoint = (e: PointerEvent) => {
 			const p = this.ptrs.get(e.pointerId);
 			if (!p) return;
 			const [x, y] = pos(e);
 			const now = performance.now();
 			this.lastInput = now;
-			const dt = Math.max(4, now - p.t);
+			// The dispatch event often repeats the final coalesced sample. Counting
+			// that zero-distance sample halves blade velocity on touch devices.
+			if (x === p.x && y === p.y) return;
+			const dt = Math.max(1, e.timeStamp - p.t);
 			p.vx = p.vx * 0.5 + ((x - p.x) / dt) * 500;
 			p.vy = p.vy * 0.5 + ((y - p.y) / dt) * 500;
-			p.t = now;
+			p.t = e.timeStamp;
 			p.px = p.x;
 			p.py = p.y;
 			p.x = x;
@@ -756,9 +760,21 @@ export class Game {
 			p.travel += Math.hypot(x - p.px, y - p.py);
 			if (!this.paused) this.toolMove(p);
 		};
+		const move = (e: PointerEvent) => {
+			// Touchscreens merge samples. Preserve the actual curve and event timing so a
+			// fast stroke does not shortcut a corner or depend on how long this handler takes.
+			const samples = e.getCoalescedEvents?.() ?? [];
+			if (samples.length) {
+				const stride = Math.max(1, Math.ceil(samples.length / 32));
+				for (let i = 0; i < samples.length; i += stride) movePoint(samples[i]);
+			}
+			movePoint(e);
+		};
 		const up = (e: PointerEvent) => {
 			const p = this.ptrs.get(e.pointerId);
 			if (!p) return;
+			// Some devices deliver the final position only on release.
+			movePoint(e);
 			this.ptrs.delete(e.pointerId);
 			this.toolUp(p);
 		};
@@ -917,6 +933,7 @@ export class Game {
 				break;
 			case "cracker": {
 				const real = this.pick(p.x, p.y);
+				if (!real) break;
 				let n = -1;
 				if (real) {
 					this.project();
@@ -971,23 +988,6 @@ export class Game {
 				this.project();
 				const n = c.cutSegment(p.px, p.py, p.x, p.y, 0.5);
 				if (n) this.afterCut(p, n, true);
-				// the wake of the blade
-				this.pick(p.x, p.y);
-				this.particles.emit(
-					P_SPARK,
-					this.hit[0],
-					this.hit[1],
-					this.hit[2] + 0.03,
-					0,
-					0,
-					0,
-					0.12,
-					0.012,
-					1,
-					1,
-					1,
-					0.5,
-				);
 				break;
 			}
 			case "needle":
@@ -1063,6 +1063,7 @@ export class Game {
 				if (n) this.cutThisStroke = true;
 			}
 			if (this.cutThisStroke) {
+				c.endStroke();
 				this.stats.strokes++;
 				this.spend(tool, 1);
 				this.cutThisStroke = false;
@@ -1099,7 +1100,8 @@ export class Game {
 				audio.setTorch(false);
 				continue;
 			}
-			this.spend(tool, dt);
+			const toolDt = Math.min(dt, l ?? dt);
+			this.spend(tool, toolDt);
 			const real = this.pick(p.x, p.y);
 			const hx = this.hit[0],
 				hy = this.hit[1],
@@ -1107,7 +1109,7 @@ export class Game {
 			const pxPerM = this.cssH / (2 * Math.tan(FOV / 2) * this.camPos[2]);
 			if (tool === "torch") {
 				this.project();
-				const lit = c.heatAt(p.x, p.y, 0.07 * pxPerM, dt * 3.4);
+				const lit = c.heatAt(p.x, p.y, 0.07 * pxPerM, toolDt * 3.4);
 				if (lit) {
 					audio.ignite();
 					this.fx(10);
@@ -1135,7 +1137,7 @@ export class Game {
 				if (c.fabric.flammability <= 0 && real) this.hint(`${c.fabric.name} will not burn`);
 			} else if (tool === "water") {
 				this.project();
-				const out = c.wetAt(p.x, p.y, 0.1 * pxPerM, dt * 2.4);
+				const out = c.wetAt(p.x, p.y, 0.1 * pxPerM, toolDt * 2.4);
 				if (out) audio.hiss();
 				// spray from the nozzle toward the cloth
 				const r = this.rayBuf;
@@ -1679,18 +1681,25 @@ export class Game {
 	private confetti() {
 		const ps = this.particles;
 		const top = this.topY + 0.35;
-		for (let i = 0; i < 150; i++) {
+		const count = this.reducedMotion
+			? 18
+			: this.tier === "low"
+				? 48
+				: this.tier === "high"
+					? 120
+					: 84;
+		for (let i = 0; i < count; i++) {
 			const col = CONFETTI[(Math.random() * CONFETTI.length) | 0];
 			ps.emit(
 				P_CONFETTI,
 				rand(-this.clothW * 0.7, this.clothW * 0.7),
 				top + rand(-0.1, 0.5),
 				rand(-0.2, 0.5),
-				rand(-0.8, 0.8),
-				rand(-0.5, 1.5),
+				rand(-0.45, 0.45),
+				rand(-0.3, this.reducedMotion ? 0 : 0.7),
 				rand(-0.3, 0.3),
-				rand(3.5, 6),
-				rand(0.012, 0.022),
+				rand(2.8, 4.5),
+				rand(0.008, 0.015),
 				col[0],
 				col[1],
 				col[2],
@@ -1764,11 +1773,16 @@ export class Game {
 	}
 
 	private evaluate() {
+		// A completed run keeps the score it earned. Loose pieces may still settle
+		// during the short celebration, but cannot undo the winning readout.
+		if (this.state === "done" || this.state === "failed") return;
 		const c = this.cloth;
 		const lv = this.level;
 		if (!c || !lv) return;
 		const o = lv.objective;
-		c.analyze(o.type === "pieces" ? c.initialArea * 0.035 : 0);
+		c.analyze(
+			o.type === "pieces" ? c.initialArea * 0.035 : o.type === "sandbox" ? c.initialArea * 0.02 : 0,
+		);
 		const st = this.stats;
 		st.pieces = c.pieces;
 		st.burnt = c.burntArea / c.initialArea;
@@ -1783,6 +1797,14 @@ export class Game {
 				text = `${Math.min(c.pieces, o.count)} / ${o.count}`;
 				done = c.pieces >= o.count;
 				st.quality = 1;
+				if (!done && this.started) {
+					let possible = 0;
+					const minimum = c.initialArea * 0.035;
+					for (let p = 0; p < c.np; p++)
+						if (c.alive[p] && c.parent[p] === p)
+							possible += Math.floor(c.compArea[p] / minimum + 1e-5);
+					if (possible < o.count) fail = "The pieces became too small. Try shorter pulls";
+				}
 				break;
 			case "clear": {
 				const cleared = 1 - c.hangingArea / c.initialArea;
@@ -1875,7 +1897,7 @@ export class Game {
 			}
 			default:
 				prog = 1 - c.hangingArea / c.initialArea;
-				text = `${Math.round(prog * 100)}%`;
+				text = `${c.pieces} ${c.pieces === 1 ? "piece" : "pieces"}`;
 				break;
 		}
 		this.progress = prog;

@@ -89,12 +89,12 @@ describe("audio preferences and lifetime", () => {
 		engine.configure({ sound: true, volume: 0.8, ambience: false, music: true });
 		engine.wake();
 		vi.advanceTimersByTime(260);
-		expect(ctx.tones).toHaveLength(2);
+		expect(ctx.tones).toHaveLength(3);
 		engine.configure({ sound: true, volume: 0.8, ambience: false, music: false });
 		expect(ctx.gains[1].gain.setTargetAtTime).toHaveBeenLastCalledWith(0, 0, 0.15);
 		ctx.currentTime = 5;
 		vi.advanceTimersByTime(3000);
-		expect(ctx.tones).toHaveLength(2);
+		expect(ctx.tones).toHaveLength(3);
 	});
 	it("suspends background audio and releases completed effects and timers", async () => {
 		engine.wake();

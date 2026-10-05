@@ -39,11 +39,16 @@ export function Dock({ tools, tool, left, toast, onTool }: Props) {
 							type="button"
 							className={`tool${t === tool ? " tool--on" : ""}${empty ? " tool--empty" : ""}`}
 							aria-label={TOOLS[t].name}
+							aria-keyshortcuts={TOOLS[t].key}
+							title={`${TOOLS[t].name} · ${TOOLS[t].hint}`}
 							aria-pressed={t === tool}
 							disabled={empty}
 							onClick={() => onTool(t)}
 						>
 							<ToolIcon tool={t} size={26} />
+							<span className="tool__name" aria-hidden="true">
+								{TOOLS[t].name}
+							</span>
 							{l !== undefined && <span className="tool__left">{allowance(t, l)}</span>}
 							{tools.length > 1 && <span className="tool__key">{TOOLS[t].key}</span>}
 						</button>

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.0 — 2026-10-06
+
+- Keep fractures local to a pull, burn, blast, or existing rip. Cutting the side of the cloth no longer lets a stressed distant peg start an unrelated tear.
+- Keep continuous cuts connected across split mesh vertices, close cutout loops, and handle precise hem crossings. A scissor notch now helps a later hand pull start at its tip.
+- Follow coalesced touch samples and the release endpoint. Repeated samples no longer slow the blade, and empty-space firecracker taps preserve their allowance.
+- Make Wet Blanket's soaked band consistent across orientations; keep the winning score stable while scraps settle. Offer a retry when scraps become too small to meet a piece-count goal, and clamp the last fraction of held-tool fuel.
+- Label every tool, fabric, and dye clearly. Show the current level or fabric above the objective, show piece counts in Free Play, and prevent dialog focus from scrolling the canvas away from the controls.
+- Refine weave highlights and environment shader transitions. Use smaller, gentler celebrations that respect graphics quality and reduced-motion settings, and let particles finish falling behind result cards.
+- Compose distinct, quiet musical phrases for each environment, with rests and slower bass changes. Music remains optional and off by default.
+- Preserve valid progress when another saved field is malformed. Expand regression coverage to 70 tests and add a reproducible 48-scenario campaign engine check.
+
 ## 1.2.0 — 2026-10-06
 
 - Fix objective text overlapping progress. Frame the cloth using measured HUD and tool-dock bounds, including narrow and landscape screens.

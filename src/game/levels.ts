@@ -172,9 +172,9 @@ export const LEVELS: LevelDef[] = [
 		id: "1-5",
 		world: 1,
 		n: 5,
-		name: "Windy Day",
+		name: "Silk Scarf",
 		brief: "Shred the scarf into five",
-		tip: "Silk is delicate. Catch it as it flies.",
+		tip: "Make short, firm pulls and let go between rips. Use two fingers to pull a loose piece apart.",
 		env: "backyard",
 		cloth: {
 			fabric: "silk",
@@ -194,7 +194,7 @@ export const LEVELS: LevelDef[] = [
 		n: 6,
 		name: "Tough Jeans",
 		brief: "Rip the denim into three",
-		tip: "Too tough for bare hands — until you snip a notch in the edge.",
+		tip: "Snip a short notch in the side, let go, then grab just below it and pull down. Repeat for a third piece.",
 		env: "backyard",
 		cloth: {
 			fabric: "denim",
@@ -413,7 +413,7 @@ export const LEVELS: LevelDef[] = [
 		n: 3,
 		name: "Save the Crest",
 		brief: "Burn the banner, spare the crest",
-		tip: "Wet cloth will not burn. Soak what you want to keep.",
+		tip: "Soak the crest and a narrow strip up to the batten so it stays hanging. Then light the dry cloth below.",
 		env: "forge",
 		cloth: {
 			fabric: "cotton",
@@ -439,7 +439,7 @@ export const LEVELS: LevelDef[] = [
 		n: 4,
 		name: "Short Fuse",
 		brief: "Blast the hide off its hooks",
-		tip: "Tap to stick a firecracker to the cloth. Leather shrugs off everything else.",
+		tip: "Tap the cloth beside each top hook to attach a firecracker. Both hooks must come free.",
 		env: "forge",
 		cloth: {
 			fabric: "leather",
@@ -653,7 +653,7 @@ export const LEVELS: LevelDef[] = [
 		n: 6,
 		name: "The Master",
 		brief: "Destroy the scroll, save the seal",
-		tip: "Every tool you've learned. Paper burns in seconds — soak the seal first.",
+		tip: "Soak the seal and its connection to the top before lighting the paper. Or trim around it with scissors.",
 		env: "dojo",
 		cloth: {
 			fabric: "paper",

@@ -39,6 +39,17 @@ export const DYES = [
 	"#1b1a1f",
 ];
 
+export const DYE_NAMES = [
+	"Natural colour",
+	"Ivory",
+	"Crimson",
+	"Marigold",
+	"Fern",
+	"Cobalt",
+	"Violet",
+	"Ink",
+];
+
 /** How each fabric comes dressed when it is not part of a level. */
 const DEFAULT_PRINT: Record<FabricId, PrintSpec> = {
 	cotton: { pattern: { kind: "gingham", color: "#c4262b" }, hem: "#ffffff" },
@@ -87,7 +98,7 @@ export function sandboxLevel(o: SandboxOpts): LevelDef {
 		world: 0,
 		n: 0,
 		name: "Sandbox",
-		brief: "No rules. Wreck it.",
+		brief: "Free play",
 		env: o.env,
 		cloth: {
 			fabric: o.fabric,

@@ -85,7 +85,10 @@ input:focus-visible {
 	display: block;
 	touch-action: none;
 	outline: none;
+	cursor: crosshair;
 }
+.app__canvas[data-tool="hand"] { cursor: grab; }
+.app__canvas[data-tool="hand"]:active { cursor: grabbing; }
 
 .layer {
 	position: absolute;
@@ -435,8 +438,9 @@ input:focus-visible {
 	display: grid;
 	place-items: center;
 	width: 54px;
-	height: 54px;
-	border-radius: 50%;
+	height: 62px;
+	padding-bottom: 14px;
+	border-radius: 17px;
 	color: var(--cream-2);
 	background: var(--ink-600);
 	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
@@ -481,14 +485,15 @@ input:focus-visible {
 }
 .tool__key {
 	position: absolute;
-	bottom: -3px;
-	left: 50%;
-	transform: translateX(-50%);
+	top: 3px;
+	left: 6px;
 	font-size: 9px;
 	font-weight: 700;
 	color: var(--muted);
 	display: none;
 }
+.tool__name { position: absolute; bottom: 6px; left: 2px; right: 2px; font-size: 10px; font-weight: 650; line-height: 1; }
+.goal__meta { display: block; margin-bottom: 3px; color: var(--cream-2); font-size: 10px; font-weight: 500; line-height: 1.2; }
 @media (hover: hover) and (pointer: fine) {
 	.tool__key {
 		display: block;
@@ -1307,7 +1312,7 @@ input[type="range"]::-moz-range-thumb {
 	/* phones on their side: tighten everything vertical */
 	.tool {
 		width: 46px;
-		height: 46px;
+		height: 54px;
 	}
 	.card {
 		padding: 18px 18px 16px;
@@ -1327,6 +1332,7 @@ input[type="range"]::-moz-range-thumb {
 		display: none;
 	}
 }
+@media (max-width: 600px) { .tool__key { display: none; } .tool { height: 58px; } }
 @media (prefers-reduced-motion: reduce) {
 	* {
 		animation-duration: 0.01ms !important;

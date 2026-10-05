@@ -115,7 +115,7 @@ void backyard(vec3 P, vec3 d, bool fl, inout Surf s) {
 	float w = 0.16;
 	float id = floor(P.x / w);
 	float f = fract(P.x / w);
-	float gap = smoothstep(0.0, 0.03, f) * smoothstep(1.0, 0.97, f);
+	float gap = smoothstep(0.0, 0.03, f) * (1.0 - smoothstep(0.97, 1.0, f));
 	float grain = fbm(vec2(P.x * 60.0 + id * 13.0, P.y * 2.4 + id * 5.0));
 	float knot = smoothstep(0.78, 0.92, fbm(vec2(P.x * 9.0 + id * 3.0, P.y * 5.0)));
 	vec3 wood = mix(vec3(0.16, 0.08, 0.036), vec3(0.4, 0.23, 0.105), grain) * (0.75 + 0.5 * hash21(vec2(id, 1.0)));
@@ -139,7 +139,7 @@ void theatre(vec3 P, bool fl, inout Surf s) {
 		float off = hash21(vec2(id, 9.0)) * len;
 		float seg = floor((P.z + off) / len);
 		float fz = fract((P.z + off) / len);
-		float seam = smoothstep(0.0, 0.035, f) * smoothstep(1.0, 0.965, f) * smoothstep(0.0, 0.006, fz) * smoothstep(1.0, 0.994, fz);
+		float seam = smoothstep(0.0, 0.035, f) * (1.0 - smoothstep(0.965, 1.0, f)) * smoothstep(0.0, 0.006, fz) * (1.0 - smoothstep(0.994, 1.0, fz));
 		float grain = fbm(vec2(P.x * 64.0 + id * 7.0, P.z * 3.0 + seg * 3.0));
 		vec3 wood = mix(vec3(0.05, 0.02, 0.01), vec3(0.19, 0.09, 0.04), grain) * (0.7 + 0.6 * hash21(vec2(id, seg)));
 		// scuffs where a thousand shoes have been
@@ -156,7 +156,7 @@ void theatre(vec3 P, bool fl, inout Surf s) {
 		s.ao = (0.3 + 0.7 * (fold * 0.5 + 0.5)) * (0.4 + 0.6 * smoothstep(0.0, 0.7, P.y));
 		s.rough = 1.0;
 		// gold fringe along the hem of the drape
-		float hem = smoothstep(0.1, 0.085, P.y) * smoothstep(0.02, 0.035, P.y);
+		float hem = (1.0 - smoothstep(0.085, 0.1, P.y)) * smoothstep(0.02, 0.035, P.y);
 		s.albedo = mix(s.albedo, vec3(0.5, 0.3, 0.05) * (0.5 + 0.5 * step(0.5, fract(P.x * 60.0))), hem);
 	}
 }
@@ -197,8 +197,8 @@ void forge(vec3 P, bool fl, inout Surf s) {
 		float x = P.x + mod(row, 2.0) * bs.x * 0.5;
 		vec2 id = vec2(floor(x / bs.x), row);
 		vec2 f = vec2(fract(x / bs.x), fract(P.y / bs.y));
-		float mx = smoothstep(0.0, 0.045, f.x) * smoothstep(1.0, 0.955, f.x);
-		float my = smoothstep(0.0, 0.13, f.y) * smoothstep(1.0, 0.87, f.y);
+		float mx = smoothstep(0.0, 0.045, f.x) * (1.0 - smoothstep(0.955, 1.0, f.x));
+		float my = smoothstep(0.0, 0.13, f.y) * (1.0 - smoothstep(0.87, 1.0, f.y));
 		float brick = mx * my;
 		float h = hash21(id);
 		float n = fbm(vec2(x, P.y) * 34.0 + id * 3.0);
@@ -264,7 +264,7 @@ void dojo(vec3 P, bool fl, inout Surf s) {
 	float fib = fbm(P.xy * vec2(40.0, 14.0)) * 0.5 + fbm(P.xy * 90.0) * 0.5;
 	float leafA = smoothstep(0.5, 0.62, fbm(P.xy * 1.7 + vec2(uSeed * 5.0, 1.0)));
 	float leafB = smoothstep(0.45, 0.7, fbm(P.xy * 6.0 + 3.0));
-	float branch = smoothstep(0.035, 0.0, abs(P.y - 1.25 - 0.22 * sin(P.x * 1.3 + 1.0) - 0.1 * fbm(vec2(P.x * 3.0, 0.0))));
+	float branch = 1.0 - smoothstep(0.0, 0.035, abs(P.y - 1.25 - 0.22 * sin(P.x * 1.3 + 1.0) - 0.1 * fbm(vec2(P.x * 3.0, 0.0))));
 	float shade = clamp(leafA * leafB * 0.75 + branch * 0.5 * leafA, 0.0, 1.0);
 	float fall = 0.55 + 0.45 * smoothstep(wains, kamoi, P.y);
 	vec3 paper = vec3(1.0, 0.8, 0.52) * (0.62 + 0.14 * fib) * fall * (1.0 - 0.5 * shade);

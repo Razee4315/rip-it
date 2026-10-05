@@ -130,6 +130,10 @@ void main() {
 	// water darkens and slicks the cloth
 	float wet = vAux.y;
 	float rough = mix(uMat.x, uMat.x * 0.45, wet);
+	// Filter subpixel weave highlights: fine threads should soften as the camera
+	// pulls back instead of sparkling when the cloth moves on a small screen.
+	float variance = max(dot(dFdx(N), dFdx(N)), dot(dFdy(N), dFdy(N)));
+	rough = min(1.0, sqrt(rough * rough + min(0.3, variance * 0.4)));
 	float specK = uMat.y + wet * 0.45 * (1.0 - uMat2.y);
 	albedo *= mix(1.0, 0.42, wet * (1.0 - uMat2.y));
 

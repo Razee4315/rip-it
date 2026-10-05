@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SAVE, normalizeSettings } from "./progress";
+import { DEFAULT_SAVE, normalizeSave, normalizeSettings, totalStars } from "./progress";
 
 describe("settings compatibility", () => {
 	it("preserves existing preferences and fills in new controls", () => {
@@ -26,4 +26,24 @@ describe("settings compatibility", () => {
 		);
 		expect(normalizeSettings(null)).toEqual(DEFAULT_SAVE.settings);
 	});
+});
+
+describe("saved campaign progress", () => {
+	it("keeps good results while rejecting corrupt counts and times", () => {
+		const save = normalizeSave({
+			stars: { "1-1": 3, "1-2": "two", "1-3": Number.NaN, "1-4": 9, "1-5": -1, removed: 3 },
+			best: { "1-1": 4.5, "1-2": -8, "1-3": Number.POSITIVE_INFINITY, "1-4": "fast" },
+			settings: { music: true },
+		});
+		expect(save.stars).toEqual({ "1-1": 3, "1-4": 3, "1-5": 0 });
+		expect(save.best).toEqual({ "1-1": 4.5 });
+		expect(totalStars(save)).toBe(6);
+		expect(save.settings.music).toBe(true);
+	});
+	it.each([null, "broken", [], { stars: "bad", best: [12] }])(
+		"recovers a malformed save: %j",
+		(value) => {
+			expect(normalizeSave(value)).toEqual(DEFAULT_SAVE);
+		},
+	);
 });

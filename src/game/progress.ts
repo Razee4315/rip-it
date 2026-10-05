@@ -66,11 +66,29 @@ export const WORLD_GATE = 4;
 const OPEN_AHEAD = 2;
 
 export async function loadSave(): Promise<Save> {
-	const s = await loadKey<Partial<Save>>("save");
+	return normalizeSave(await loadKey<unknown>("save"));
+}
+
+/** Preserve valid progress even when one stored field is damaged or obsolete. */
+export function normalizeSave(value: unknown): Save {
+	const record = (v: unknown): Record<string, unknown> =>
+		v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+	const saved = record(value),
+		counts = record(saved.stars),
+		times = record(saved.best);
+	const stars: Record<string, number> = {},
+		best: Record<string, number> = {};
+	for (const level of LEVELS) {
+		const count = counts[level.id],
+			time = times[level.id];
+		if (typeof count === "number" && Number.isFinite(count))
+			stars[level.id] = Math.max(0, Math.min(3, Math.floor(count)));
+		if (typeof time === "number" && Number.isFinite(time) && time >= 0) best[level.id] = time;
+	}
 	return {
-		stars: { ...(s?.stars ?? {}) },
-		best: { ...(s?.best ?? {}) },
-		settings: normalizeSettings(s?.settings),
+		stars,
+		best,
+		settings: normalizeSettings(saved.settings),
 	};
 }
 

@@ -1,3 +1,4 @@
+import { FABRICS } from "@/engine/cloth/fabrics";
 import type { HudState, LevelDef } from "@/game/types";
 import { IconClock, IconPause, IconRestart, IconShield, IconSliders, ObjectiveIcon } from "./icons";
 
@@ -25,6 +26,11 @@ export function Hud({ level, hud, onPause, onRestart, onSheet }: Props) {
 						<ObjectiveIcon type={level.objective.type} size={20} />
 					</span>
 					<span className="goal__text">
+						<span className="goal__meta">
+							{sandbox
+								? FABRICS[level.cloth.fabric].name
+								: `${level.world}–${level.n} · ${level.name}`}
+						</span>
 						<span className="goal__brief">{level.brief}</span>
 					</span>
 					<span className="goal__read">{hud.readout}</span>

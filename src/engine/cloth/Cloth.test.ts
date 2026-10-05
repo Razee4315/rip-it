@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { LEVELS } from "../../game/levels";
+import { insidePolygon, shapePolygon } from "../gfx/prints";
 import { Cloth, DT, MAX_FAN } from "./Cloth";
 import { FABRICS } from "./fabrics";
 import { type Mount, buildLayout } from "./layout";
@@ -177,6 +179,56 @@ describe("cloth topology", () => {
 		expect(c.pieces).toBe(1);
 	});
 
+	it.each(LEVELS.filter((l) => l.objective.type === "cutout"))(
+		"following the printed guide frees $id in portrait and landscape",
+		(level) => {
+			for (const size of [{ w: level.cloth.w, h: level.cloth.h }, level.cloth.tall!]) {
+				const cols = Math.round(size.w / 0.042),
+					rows = Math.round(size.h / 0.042);
+				const c = make(
+					FABRICS[level.cloth.fabric],
+					cols,
+					rows,
+					level.cloth.mount,
+					cols * 0.042,
+					rows * 0.042,
+				);
+				const target = level.cloth.target!;
+				const poly = shapePolygon(target, c.width / c.height);
+				c.tagRegion((u, v) => insidePolygon(poly, u, v));
+				const guide = shapePolygon({ ...target, r: target.r * 1.13 }, c.width / c.height);
+				const points: number[][] = [];
+				for (let i = 0; i < guide.length; i++) {
+					const a = guide[i],
+						b = guide[(i + 1) % guide.length];
+					for (let k = 0; k < 4; k++)
+						points.push([
+							500 + (a[0] + ((b[0] - a[0]) * k) / 4 - 0.5) * c.width * 1000,
+							(a[1] + ((b[1] - a[1]) * k) / 4) * c.height * 1000,
+						]);
+				}
+				points.push(points[0]);
+				projectFlat(c);
+				c.beginStroke();
+				for (let i = 1; i < points.length; i++)
+					c.cutSegment(points[i - 1][0], points[i - 1][1], points[i][0], points[i][1], 0.12);
+				c.analyze();
+				expect(validate(c)).toEqual([]);
+				expect(c.pieces).toBe(2);
+				let quality = 0;
+				for (let p = 0; p < c.np; p++) {
+					if (c.alive[p] && c.parent[p] === p && !c.compPin[p]) {
+						quality = Math.max(
+							quality,
+							(c.compTag[p] / c.targetArea) * (c.compTag[p] / c.compArea[p]),
+						);
+					}
+				}
+				expect(quality).toBeGreaterThan(0.84);
+			}
+		},
+	);
+
 	it("sewing a fresh cut heals it completely", () => {
 		const c = make();
 		projectFlat(c);
@@ -188,6 +240,35 @@ describe("cloth topology", () => {
 		expect(c.countSplits()).toBe(0);
 		c.analyze();
 		expect(c.pieces).toBe(1);
+	});
+
+	it.each([6, 10])("%i strips separate when sampled cuts meet the exact hems", (count) => {
+		for (const [width, height] of [
+			[1, 1.35],
+			[1.6, 0.95],
+		]) {
+			const cols = Math.round(width / 0.042),
+				rows = Math.round(height / 0.042);
+			const c = make(FABRICS.silk, cols, rows, { kind: "batten" }, cols * 0.042, rows * 0.042);
+			const cuts: number[] = [];
+			for (let strip = 1; strip < count; strip++) {
+				projectFlat(c);
+				c.beginStroke();
+				const y = (c.height * 1000 * strip) / count;
+				let n = 0;
+				for (let sample = 1; sample <= 40; sample++) {
+					const x0 = 500 + ((sample - 1) / 40 - 0.5) * c.width * 1000;
+					const x1 = 500 + (sample / 40 - 0.5) * c.width * 1000;
+					n += c.cutSegment(x0, y, x1, y, 0.12);
+				}
+				c.endStroke();
+				c.analyze(c.initialArea * 0.035);
+				cuts.push(n, c.pieces);
+			}
+			c.analyze(c.initialArea * 0.035);
+			expect(c.pieces, JSON.stringify({ width, height, cuts })).toBe(count);
+			expect(validate(c)).toEqual([]);
+		}
 	});
 
 	it("killing triangles keeps the mesh consistent", () => {
@@ -204,6 +285,47 @@ describe("cloth topology", () => {
 });
 
 describe("cloth behaviour", () => {
+	it.each(Object.keys(FABRICS) as (keyof typeof FABRICS)[])(
+		"a side cut in %s cannot start a remote rip at a stressed peg",
+		(id) => {
+			const c = make(FABRICS[id], 24, 20, { kind: "line", pegs: 4 }, 1.2, 1);
+			c.settle(0.5, null);
+			projectFlat(c);
+			c.beginStroke();
+			expect(c.cutSegment(900, 650, 1150, 650, 0.5)).toBeGreaterThan(0);
+			// A very weak thread near the opposite mount reproduces residual solver stress.
+			for (let e = 0; e < c.ne; e++) {
+				const a = c.ea[e];
+				if (c.uv[a * 2] < 0.2 && c.uv[a * 2 + 1] < 0.2 && c.eAlive[e]) {
+					c.eThr[e] = 1.00001;
+					c.eRest[e] *= 0.7;
+				}
+			}
+			run(c, 1.2);
+			expect(c.tearCount).toBe(0);
+			expect(validate(c)).toEqual([]);
+		},
+	);
+
+	it("a local blast does not authorize fracture on the opposite side", () => {
+		const c = make(FABRICS.cotton, 30, 20, { kind: "batten" }, 1.5, 1);
+		c.settle(0.4, null);
+		c.explode(0.6, 0.5, 0, 0.12, 0);
+		for (let e = 0; e < c.ne; e++) {
+			const a = c.ea[e];
+			if (c.uv[a * 2] < 0.15 && c.eAlive[e]) {
+				c.eThr[e] = 1.00001;
+				c.eRest[e] *= 0.7;
+			}
+		}
+		// Inspect the onset, before a real crack has time to run across connected fabric.
+		run(c, 6 * DT);
+		for (let p = c.n0; p < c.np; p++) {
+			if (c.alive[p]) expect(c.uv[p * 2]).toBeGreaterThan(0.2);
+		}
+		expect(validate(c)).toEqual([]);
+	});
+
 	it.each(["cotton", "silk", "paper"] as const)(
 		"%s stays stable in still air after settling",
 		(id) => {
@@ -355,6 +477,7 @@ describe("cloth behaviour", () => {
 		c.beginStroke();
 		// snip in from the left edge at mid height
 		c.cutSegment(60, 300, 300, 300, 0.2);
+		c.endStroke();
 		const g = c.grab(-0.36, 1.2 - 0.42, 0, 0.07);
 		expect(g).not.toBeNull();
 		if (!g) return;

@@ -198,6 +198,7 @@ export default function App() {
 		const g = gameRef.current;
 		if (!g) return;
 		setModal(null);
+		setToast(null);
 		if (!keepSheet) setSheet(false);
 		const request = ++transition.current;
 		g.setPaused(true);
@@ -221,6 +222,7 @@ export default function App() {
 		if (!g) return;
 		setModal(null);
 		setSheet(false);
+		setToast(null);
 		const request = ++transition.current;
 		g.setPaused(true);
 		await g.fadeOut();
@@ -346,7 +348,12 @@ export default function App() {
 					Preparing your cloth…
 				</div>
 			)}
-			<canvas ref={canvasRef} className="app__canvas" />
+			<canvas
+				ref={canvasRef}
+				className="app__canvas"
+				data-tool={tool}
+				aria-label="Interactive cloth. Choose a tool, then drag or hold on the fabric."
+			/>
 
 			{screen === "title" && save && (
 				<div className="layer">

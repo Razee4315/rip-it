@@ -8,6 +8,36 @@ import type { EnvId } from "../gfx/environments";
 
 type Loop = { src: AudioBufferSourceNode; gain: GainNode; filter: BiquadFilterNode };
 
+// Small, composed pentatonic phrases leave room for the cloth sounds. The pauses
+// are intentional; bass changes every four beats rather than following each note.
+const SCORES: Record<EnvId, { root: number; beat: number; phrase: (number | null)[] }> = {
+	studio: {
+		root: 246.94,
+		beat: 2.6,
+		phrase: [0, 4, 7, null, 9, 7, 4, null, 2, 4, 7, 4, 2, null, 0, null],
+	},
+	backyard: {
+		root: 261.63,
+		beat: 2.2,
+		phrase: [0, 7, 4, 2, null, 4, 9, 7, 4, null, 2, 7, 4, 2, 0, null],
+	},
+	theatre: {
+		root: 220,
+		beat: 2.8,
+		phrase: [0, 3, 7, 10, null, 7, 5, 3, 0, null, 5, 7, 3, null, 0, null],
+	},
+	forge: {
+		root: 196,
+		beat: 2.9,
+		phrase: [0, null, 7, 3, null, 5, 3, 0, 10, 7, null, 5, 3, null, 0, null],
+	},
+	dojo: {
+		root: 293.66,
+		beat: 2.7,
+		phrase: [0, 2, 7, null, 9, 7, null, 2, 4, null, 7, 4, 2, null, 0, null],
+	},
+};
+
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 export class AudioEngine {
@@ -374,6 +404,8 @@ export class AudioEngine {
 	setAmbience(env: EnvId | null) {
 		if (this.env === env) return;
 		this.env = env;
+		this.note = 0;
+		this.nextNote = this.ctx?.currentTime ?? 0;
 		if (this.ctx) this.startAmbience();
 	}
 
@@ -392,11 +424,19 @@ export class AudioEngine {
 		this.ambTimer = setInterval(() => {
 			if (this.muted || !this.ctx || this.ctx.state !== "running") return;
 			if (this.music && this.ctx.currentTime >= this.nextNote) {
-				const notes = [220, 329.63, 293.66, 261.63, 220, 261.63, 329.63, 196];
-				const f = notes[this.note++ % notes.length];
-				this.tone({ f, g: 0.055, d: 2.8, a: 0.16, music: true });
-				this.tone({ f: f / 2, g: 0.025, d: 3.2, a: 0.3, music: true });
-				this.nextNote = this.ctx.currentTime + 2.4;
+				const score = SCORES[env];
+				const step = this.note++ % score.phrase.length;
+				const semitone = score.phrase[step];
+				if (semitone !== null) {
+					const f = score.root * 2 ** (semitone / 12);
+					this.tone({ f, g: 0.04, d: score.beat * 1.4, a: 0.22, music: true });
+					this.tone({ f: f * 2, g: 0.006, d: score.beat, a: 0.3, music: true });
+				}
+				if (step % 4 === 0) {
+					const bass = (score.root / 2) * (step === 8 ? 1.5 : 1);
+					this.tone({ f: bass, g: 0.018, d: score.beat * 2, a: 0.45, music: true });
+				}
+				this.nextNote = this.ctx.currentTime + score.beat;
 			}
 			// fire crackle rides on top of the loop
 			if (this.fireLevel > 0.01) {

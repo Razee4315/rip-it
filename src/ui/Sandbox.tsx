@@ -1,5 +1,5 @@
 import { FABRICS, FABRIC_ORDER } from "@/engine/cloth/fabrics";
-import { DYES, MOUNTS, PLACES, type SandboxOpts } from "@/game/sandbox";
+import { DYES, DYE_NAMES, MOUNTS, PLACES, type SandboxOpts } from "@/game/sandbox";
 import { IconCross, IconRestart } from "./icons";
 
 export type Dials = { wind: number; gravity: number; slowmo: boolean };
@@ -50,13 +50,14 @@ export function SandboxSheet({ opts, dials, onOpts, onDials, onFresh, onClose }:
 				<section className="group">
 					<h3 className="eyebrow">Dye</h3>
 					<div className="dyes">
-						{DYES.map((d) => (
+						{DYES.map((d, i) => (
 							<button
 								key={d || "natural"}
 								type="button"
 								className="dye"
 								aria-pressed={opts.dye === d}
-								aria-label={d ? `Dye ${d}` : "Natural colour"}
+								aria-label={DYE_NAMES[i]}
+								title={DYE_NAMES[i]}
 								style={{ background: d || "var(--ink-700)" }}
 								onClick={() => onOpts({ ...opts, dye: d })}
 							>
