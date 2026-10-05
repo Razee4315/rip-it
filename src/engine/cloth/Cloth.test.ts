@@ -205,6 +205,44 @@ describe("cloth topology", () => {
 
 describe("cloth behaviour", () => {
 	it.each(["cotton", "silk", "paper"] as const)(
+		"%s stays stable in still air after settling",
+		(id) => {
+			const c = make(FABRICS[id], 23, 30, { kind: "line", pegs: 3 }, 0.966, 1.26);
+			c.floorY = -1;
+			c.settle(1.1, null);
+			const rest = c.pos.slice(0, c.np * 3);
+			const calm = new Wind();
+			calm.set(0, 0, 0, 0, 0);
+			let peakSpeed = 0;
+			// Match idle gameplay: 24 fixed substeps per 30 Hz render frame.
+			for (let frame = 0; frame < 180; frame++) {
+				c.prepare(calm);
+				for (let step = 0; step < 24; step++) c.substep();
+				for (let p = 0; p < c.np; p++) {
+					peakSpeed = Math.max(
+						peakSpeed,
+						Math.hypot(c.vel[p * 3], c.vel[p * 3 + 1], c.vel[p * 3 + 2]),
+					);
+				}
+			}
+			let drift = 0;
+			for (let p = 0; p < c.np; p++)
+				drift = Math.max(
+					drift,
+					Math.hypot(
+						c.pos[p * 3] - rest[p * 3],
+						c.pos[p * 3 + 1] - rest[p * 3 + 1],
+						c.pos[p * 3 + 2] - rest[p * 3 + 2],
+					),
+				);
+			expect(peakSpeed).toBeLessThan(1);
+			expect(drift).toBeLessThan(0.2);
+			expect(c.tearCount).toBe(0);
+			expect(validate(c)).toEqual([]);
+		},
+	);
+
+	it.each(["cotton", "silk", "paper"] as const)(
 		"holding and gently moving %s does not rip it",
 		(id) => {
 			const c = make(FABRICS[id], 40, 28, { kind: "rod", clips: 9, gather: 0.86 }, 1.44, 1.008);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.1 — 2026-10-05
+
+- Fix bending corrections injecting energy into untouched cloth even with wind off.
+- Settle fresh cloth in still air and keep it at rest until a tool or world control is used.
+- Start every level, restart, and sandbox preset with zero wind, including flags. Wind is opt-in through sandbox controls.
+- Improve settling so cloth reaches its hanging shape before play.
+- Remove automatic tear camera shake and simulation freezes. Slow motion remains an explicit sandbox option.
+- Add regression checks for motionless startup, stable bending, wind opt-in, and uninterrupted frames during repeated tears.
+
 ## 1.1.0 — 2026-10-05
 
 - Grabbing and small hand movements no longer start tears. Pull deliberately to rip; optional Gentle controls give more room before tearing.

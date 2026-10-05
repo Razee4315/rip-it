@@ -185,7 +185,6 @@ export const LEVELS: LevelDef[] = [
 			print: { hem: "#ffd9e8" },
 		},
 		tools: ["hand"],
-		wind: 2,
 		objective: { type: "pieces", count: 5 },
 		stars: [under(20), under(10)],
 	},
@@ -622,7 +621,6 @@ export const LEVELS: LevelDef[] = [
 			},
 		},
 		tools: ["needle", "pin"],
-		wind: 2.2,
 		pre: [
 			{
 				op: "cut",

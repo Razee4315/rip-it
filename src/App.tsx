@@ -63,10 +63,6 @@ function fontsReady(): Promise<unknown> {
 	return Promise.race([wait, timeout]).catch(() => undefined);
 }
 
-function breezeOf(level: LevelDef): number {
-	return Math.abs(ENVS[level.env].wind[0]) * (level.wind ?? 1);
-}
-
 export default function App() {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const gameRef = useRef<Game | null>(null);
@@ -86,7 +82,7 @@ export default function App() {
 	const [toast, setToast] = useState<Toast | null>(null);
 	const [sandbox, setSandbox] = useState<SandboxOpts>(DEFAULT_SANDBOX);
 	const [sheet, setSheet] = useState(false);
-	const [dials, setDials] = useState<Dials>({ wind: 0.4, gravity: 1, slowmo: false });
+	const [dials, setDials] = useState<Dials>({ wind: 0, gravity: 1, slowmo: false });
 	const [view, setView] = useState({ w: window.innerWidth, h: window.innerHeight });
 
 	const showToast = useCallback((text: string, title?: string) => {
@@ -203,7 +199,7 @@ export default function App() {
 		setTool(g.tool);
 		setHud(BLANK_HUD);
 		setResult(null);
-		setDials({ wind: breezeOf(lv), gravity: 1, slowmo: false });
+		setDials({ wind: 0, gravity: 1, slowmo: false });
 		setScreen("play");
 		setModal(intro ? "intro" : null);
 	}, []);

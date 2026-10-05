@@ -127,8 +127,9 @@ export class Game {
 	private running = false;
 	private paused = false;
 	private slowmo = false;
-	private hitstop = 0;
-	private windScale = 1;
+	private windScale = 0;
+	/** Fresh cloth rests until a tool or world control wakes it. */
+	private clothAwake = false;
 	private gravScale = 1;
 	private frameMs = 16;
 	private lastInput = 0;
@@ -276,8 +277,10 @@ export class Game {
 	setWindScale(v: number) {
 		this.windScale = Number.isFinite(v) ? clamp(v, 0, 100) : 0;
 		this.applyWind();
+		if (this.windScale > 0) this.clothAwake = true;
 	}
 	setGravityScale(v: number) {
+		if (v !== this.gravScale) this.clothAwake = true;
 		this.gravScale = v;
 		if (this.cloth) this.cloth.gravity = -9.81 * v;
 	}
@@ -384,10 +387,12 @@ export class Game {
 			cloth.refreshMass();
 		}
 
-		this.windScale = level.wind ?? 1;
+		this.windScale = 0;
+		this.clothAwake = false;
 		this.applyWind();
 		this.wind.time = 0;
-		cloth.settle(level.pre ? 1.6 : 1.1, this.wind);
+		cloth.settle(level.pre ? 1.6 : 1.1, null);
+		cloth.prepare(this.wind);
 		// soaked patches should still be wet when play begins
 		if (level.pre) for (const op of level.pre) if (op.op === "wet") this.rewet(op.u, op.v, op.r);
 		this.initialSplits = cloth.countSplits();
@@ -450,7 +455,6 @@ export class Game {
 		this.guard = -1;
 		this.shake = 0;
 		this.flash = 0;
-		this.hitstop = 0;
 		this.boomLight = 0;
 		this.acc = 0;
 		if (!level.tools.includes(this.tool)) this.tool = level.tools[0];
@@ -563,11 +567,7 @@ export class Game {
 		// dip to black quickly, come back up gently
 		this.fade += (this.fadeTo - this.fade) * Math.min(1, dt * (this.fadeTo > this.fade ? 11 : 4));
 		if (cloth && !this.paused) {
-			let simDt = dt * (this.slowmo ? 0.28 : 1);
-			if (this.hitstop > 0) {
-				this.hitstop -= dt;
-				simDt = 0;
-			}
+			const simDt = dt * (this.slowmo ? 0.28 : 1);
 			this.time += simDt;
 			this.wind.update(simDt);
 			this.acc += simDt;
@@ -578,9 +578,11 @@ export class Game {
 			} else this.acc -= steps * DT;
 			if (steps > 0) {
 				this.heldTools(simDt);
-				cloth.prepare(this.wind);
-				for (let s = 0; s < steps; s++) cloth.substep();
-				cloth.updateState(simDt);
+				if (this.clothAwake) {
+					cloth.prepare(this.wind);
+					for (let s = 0; s < steps; s++) cloth.substep();
+					cloth.updateState(simDt);
+				}
 				this.updateCrackers(simDt);
 				this.drainEvents();
 				this.ambient(simDt);
@@ -727,6 +729,7 @@ export class Game {
 			}
 			if (!this.started && this.state === "playing") this.started = true;
 			this.toolDown(p);
+			if (p.grab || this.tool !== "hand") this.clothAwake = true;
 		};
 		const move = (e: PointerEvent) => {
 			const p = this.ptrs.get(e.pointerId);
@@ -1293,7 +1296,6 @@ export class Game {
 			);
 		this.shake = 0.014;
 		this.flash = 0.5;
-		this.hitstop = 0.05;
 		this.boomLight = 3.2;
 		this.boomPos = [x, y, z];
 		audio.boom();
@@ -1452,9 +1454,7 @@ export class Game {
 			this.stats.tears = c.tearCount;
 			audio.rip(c.fabric.sound, mag / tears, tears);
 			if (tears >= 4) {
-				// a big rip lands with a beat of stillness
-				this.hitstop = Math.max(this.hitstop, Math.min(0.05, 0.012 + tears * 0.004));
-				this.shake = Math.max(this.shake, Math.min(0.006, tears * 0.0007));
+				// Feedback never interrupts the simulation or moves the camera.
 				this.fx([8, 18, 12]);
 			} else this.fx(5);
 		}

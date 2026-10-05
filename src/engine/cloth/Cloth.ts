@@ -1004,10 +1004,9 @@ export class Cloth {
 		// distance + bending constraints, one Gauss-Seidel sweep
 		const { ea, eb, eRest, eAlive, eO0, eO1, eBend } = this;
 		const aS = this.fabric.stretch / (dt * dt);
-		// bending is solved on alternate steps (at double strength): folds need less precision
-		// than stretch does, and skipping takes a quarter off the work of the solver
-		const aB = (this.fabric.bend * 0.5) / (dt * dt);
-		const bend = this.bendOn && (this.stepN & 1) === 0;
+		// Apply bending consistently: alternating doubled corrections inject kinetic energy.
+		const aB = this.fabric.bend / (dt * dt);
+		const bend = this.bendOn;
 		const ne = this.ne;
 		for (let e = 0; e < ne; e++) {
 			if (!eAlive[e]) continue;
@@ -1994,7 +1993,7 @@ export class Cloth {
 			// heavy damping while settling so it comes to rest quickly
 			if (s < steps * 0.85) {
 				const v = this.vel;
-				for (let i = 0; i < this.np * 3; i++) v[i] *= 0.97;
+				for (let i = 0; i < this.np * 3; i++) v[i] *= 0.995;
 			}
 		}
 		this.vel.fill(0, 0, this.np * 3);

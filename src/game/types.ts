@@ -80,8 +80,6 @@ export type LevelDef = {
 	tools: ToolId[];
 	/** caps on tool use: strokes / placements, or seconds for held tools */
 	limits?: Partial<Record<ToolId, number>>;
-	/** multiplies the environment's breeze */
-	wind?: number;
 	objective: Objective;
 	timeLimit?: number;
 	/** conditions for the second and third star (the first is finishing) */

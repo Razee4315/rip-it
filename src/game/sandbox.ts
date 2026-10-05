@@ -1,7 +1,7 @@
 /** Free play and the title screen are just levels without a goal. */
 import type { FabricId } from "@/engine/cloth/fabrics";
 import type { Mount } from "@/engine/cloth/layout";
-import { ENVS, type EnvId } from "@/engine/gfx/environments";
+import type { EnvId } from "@/engine/gfx/environments";
 import type { PrintSpec } from "@/engine/gfx/prints";
 import { ALL_TOOLS } from "@/engine/tools";
 import type { LevelDef, StarRule } from "./types";
@@ -100,8 +100,6 @@ export function sandboxLevel(o: SandboxOpts): LevelDef {
 			gap: flag ? 0.55 : o.mount === "frame" ? 0.3 : undefined,
 		},
 		tools: ALL_TOOLS,
-		// a flag wants about 1.5 m/s, whatever breeze the place normally has
-		wind: flag ? 1.5 / Math.abs(ENVS[o.env].wind[0]) : 1,
 		objective: { type: "sandbox" },
 		stars: [NONE, NONE],
 	};

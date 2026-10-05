@@ -1,11 +1,15 @@
-import { titleLevel } from "@/game/sandbox";
+import { DEFAULT_SANDBOX, sandboxLevel, titleLevel } from "@/game/sandbox";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Game } from "./Game";
-import { Cloth } from "./cloth/Cloth";
+import { Cloth, EV_STRIDE, EV_TEAR } from "./cloth/Cloth";
 import { FABRICS } from "./cloth/fabrics";
 import { buildLayout } from "./cloth/layout";
 
 vi.mock("./audio/audio", () => ({ audio: new Proxy({}, { get: () => vi.fn() }) }));
+vi.mock("./gfx/prints", async (original) => ({
+	...(await original<typeof import("./gfx/prints")>()),
+	drawPrint: () => null,
+}));
 vi.mock("./gfx/Renderer", () => ({
 	QUALITY: { medium: {}, low: {}, high: {} },
 	Renderer: class {
@@ -14,6 +18,10 @@ vi.mock("./gfx/Renderer", () => ({
 		resize = vi.fn();
 		setCamera = vi.fn();
 		setQuality = vi.fn();
+		setCloth = vi.fn();
+		setEnvironment = vi.fn();
+		setArt = vi.fn();
+		render = vi.fn();
 	},
 }));
 
@@ -27,10 +35,18 @@ class Canvas extends EventTarget {
 describe("game controls", () => {
 	let game: Game;
 	let canvas: Canvas;
+	let tick: FrameRequestCallback;
 	beforeEach(() => {
 		vi.stubGlobal("window", Object.assign(new EventTarget(), { devicePixelRatio: 1 }));
 		vi.stubGlobal("document", Object.assign(new EventTarget(), { hidden: false }));
 		vi.stubGlobal("cancelAnimationFrame", vi.fn());
+		vi.stubGlobal(
+			"requestAnimationFrame",
+			vi.fn((cb: FrameRequestCallback) => {
+				tick = cb;
+				return 1;
+			}),
+		);
 		canvas = new Canvas();
 		game = new Game(canvas as unknown as HTMLCanvasElement);
 		const lay = buildLayout(12, 10, 0.6, 0.5, 0, 1, 0, { kind: "batten" });
@@ -50,6 +66,7 @@ describe("game controls", () => {
 	afterEach(() => {
 		game.dispose();
 		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 	const pointer = (canvas: Canvas, type: string) =>
 		canvas.dispatchEvent(
@@ -62,6 +79,29 @@ describe("game controls", () => {
 			}),
 		);
 
+	it.each(["rod", "pole", "line"] as const)(
+		"new %s cloth stays exactly still until interaction",
+		(mount) => {
+			game.load(sandboxLevel({ ...DEFAULT_SANDBOX, mount }));
+			const cloth = game.cloth!;
+			const rest = cloth.pos.slice(0, cloth.np * 3);
+			const substep = vi.spyOn(cloth, "substep");
+			vi.spyOn(performance, "now").mockReturnValue(0);
+			game.start();
+			for (let frame = 1; frame <= 150; frame++) tick((frame * 1000) / 30);
+			expect(cloth.pos.slice(0, cloth.np * 3)).toEqual(rest);
+			expect(substep).not.toHaveBeenCalled();
+			expect(game.wind.speed).toBe(0);
+			expect(game.wind.turb).toBe(0);
+			// Explicitly enabling wind wakes physics; a fresh cloth resets it again.
+			game.setWindScale(1);
+			tick(5100);
+			expect(substep).toHaveBeenCalled();
+			game.load(sandboxLevel({ ...DEFAULT_SANDBOX, mount }));
+			expect(game.wind.speed).toBe(0);
+		},
+	);
+
 	it("zero wind disables turbulence too, and can be turned back on", () => {
 		game.setWindScale(0);
 		game.wind.update(1);
@@ -71,6 +111,28 @@ describe("game controls", () => {
 		game.setWindScale(1);
 		game.wind.base(0.7, 0.8, 0.2, v);
 		expect(Math.hypot(...v)).toBeGreaterThan(0);
+	});
+
+	it("large repeated tears never freeze physics or shake the camera", () => {
+		vi.spyOn(performance, "now").mockReturnValue(0);
+		game.setWindScale(1);
+		game.start();
+		const c = game.cloth!;
+		const step = vi.spyOn(c, "substep");
+		const render = vi.mocked(game.renderer.render);
+		for (let frame = 1; frame <= 8; frame++) {
+			c.evN = 8;
+			for (let i = 0; i < c.evN; i++) {
+				c.ev[i * EV_STRIDE] = EV_TEAR;
+				c.ev[i * EV_STRIDE + 7] = 1;
+			}
+			step.mockClear();
+			tick(frame * 30);
+			expect(step.mock.calls.length).toBeGreaterThanOrEqual(21);
+			const frameState = render.mock.calls.at(-1)?.[0];
+			expect(frameState?.shakeX).toBe(0);
+			expect(frameState?.shakeY).toBe(0);
+		}
 	});
 
 	it("rotation preserves the same cloth and its cuts", () => {
