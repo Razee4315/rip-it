@@ -21,6 +21,7 @@ import { Hud } from "@/ui/Hud";
 import { Levels } from "@/ui/Levels";
 import { type Dials, SandboxSheet } from "@/ui/Sandbox";
 import { Title } from "@/ui/Title";
+import { useDialog } from "@/ui/useDialog";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Screen = "boot" | "title" | "levels" | "play";
@@ -85,6 +86,7 @@ export default function App() {
 	const [dials, setDials] = useState<Dials>({ wind: 0, gravity: 1, slowmo: false });
 	const [view, setView] = useState({ w: window.innerWidth, h: window.innerHeight });
 
+	useDialog(modal ?? (sheet ? "sandbox" : null));
 	const showToast = useCallback((text: string, title?: string) => {
 		if (toastTimer.current) clearTimeout(toastTimer.current);
 		setToast({ id: ++toastId.current, text, title });
@@ -113,7 +115,7 @@ export default function App() {
 		void Promise.all([loadSave(), fontsReady()]).then(([s]) => {
 			if (!alive) return;
 			setSave(s);
-			audio.setMuted(!s.settings.sound);
+			audio.configure(s.settings);
 			game.setHaptics(s.settings.haptics);
 			game.setControls(s.settings.gentleControls, s.settings.reducedMotion);
 			game.setQuality(s.settings.quality);
@@ -130,6 +132,7 @@ export default function App() {
 			transition.current++;
 			window.removeEventListener("resize", fit);
 			game.dispose();
+			audio.dispose();
 			gameRef.current = null;
 		};
 	}, []);
@@ -156,7 +159,7 @@ export default function App() {
 				setModal("fail");
 			},
 		};
-	});
+	}, [showToast]);
 
 	// Menus and configuration must not consume tool fuel or advance objectives.
 	useEffect(() => {
@@ -169,16 +172,26 @@ export default function App() {
 		const g = gameRef.current;
 		if (!g || screen === "boot") return;
 		const safe = readSafeArea();
-		if (screen === "play") {
-			const perRow = Math.max(1, Math.floor((Math.min(view.w, 620) - 36) / 62));
-			const rows = Math.ceil(toolCount / perRow);
-			g.setInsets(66 + safe.top, 30 + safe.bottom + rows * 62);
-		} else {
-			// title: the banner hangs in the upper part, buttons live below it
-			const wide = view.w / view.h > 1.2;
-			g.setInsets(14 + safe.top, Math.round(view.h * (wide ? 0.3 : 0.4)));
-		}
-	}, [screen, view, toolCount]);
+		const update = () => {
+			if (screen === "play") {
+				const top = document.querySelector(".hud")?.getBoundingClientRect().bottom ?? 66 + safe.top;
+				const bottom = (
+					document.querySelector(".dock__label")?.getClientRects().length
+						? document.querySelector(".dock__label")
+						: document.querySelector(".dock__row")
+				)?.getBoundingClientRect().top;
+				g.setInsets(top + 12, bottom === undefined ? 100 + safe.bottom : view.h - bottom + 12);
+			} else {
+				const top = document.querySelector(".title__main")?.getBoundingClientRect().top;
+				g.setInsets(14 + safe.top, top === undefined ? view.h * 0.4 : view.h - top + 24);
+			}
+		};
+		update();
+		const observer = new ResizeObserver(update);
+		for (const el of document.querySelectorAll(".hud, .dock__row, .dock__label, .title__main"))
+			observer.observe(el);
+		return () => observer.disconnect();
+	}, [screen, view, toolCount, sheet]);
 
 	// ── moving between screens ──
 	const enter = useCallback(async (lv: LevelDef, intro: boolean, keepSheet = false) => {
@@ -197,7 +210,6 @@ export default function App() {
 		g.setPaused(intro || keepSheet);
 		setLevel(lv);
 		setTool(g.tool);
-		setHud(BLANK_HUD);
 		setResult(null);
 		setDials({ wind: 0, gravity: 1, slowmo: false });
 		setScreen("play");
@@ -221,16 +233,12 @@ export default function App() {
 		setScreen("title");
 	}, []);
 
-	const pickTool = useCallback(
-		(t: ToolId) => {
-			audio.wake();
-			audio.tap();
-			gameRef.current?.setTool(t);
-			setTool(t);
-			showToast(TOOLS[t].hint, TOOLS[t].name);
-		},
-		[showToast],
-	);
+	const pickTool = useCallback((t: ToolId) => {
+		audio.wake();
+		audio.tap();
+		gameRef.current?.setTool(t);
+		setTool(t);
+	}, []);
 
 	const pause = useCallback(() => {
 		audio.tap();
@@ -246,7 +254,8 @@ export default function App() {
 	}, []);
 
 	const changeSettings = useCallback((s: Settings) => {
-		audio.setMuted(!s.sound);
+		audio.wake();
+		audio.configure(s);
 		if (s.sound) audio.tap();
 		gameRef.current?.setHaptics(s.haptics);
 		gameRef.current?.setControls(s.gentleControls, s.reducedMotion);
@@ -284,19 +293,19 @@ export default function App() {
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+			if (e.key === "Escape") {
+				if (sheet) setSheet(false);
+				else if (modal === "pause") resume();
+				else if (modal === "settings") setModal(screen === "play" ? "pause" : null);
+				else if (screen === "play" && modal === null) pause();
+				else if (screen === "levels") setScreen("title");
+				return;
+			}
 			if (
 				e.target instanceof HTMLElement &&
 				e.target.matches("input, select, textarea, [contenteditable]")
 			)
 				return;
-			if (e.key === "Escape") {
-				if (sheet) setSheet(false);
-				else if (modal === "pause") resume();
-				else if (modal === "settings") setModal(null);
-				else if (screen === "play" && modal === null) pause();
-				else if (screen === "levels") setScreen("title");
-				return;
-			}
 			if (screen !== "play" || !level) return;
 			if (modal === "intro" && (e.key === "Enter" || e.key === " ")) {
 				setModal(null);
@@ -332,6 +341,11 @@ export default function App() {
 
 	return (
 		<div className="app">
+			{screen === "boot" && (
+				<div className="boot-status" role="status">
+					Preparing your cloth…
+				</div>
+			)}
 			<canvas ref={canvasRef} className="app__canvas" />
 
 			{screen === "title" && save && (
@@ -430,8 +444,7 @@ export default function App() {
 					{modal === "pause" && level && (
 						<PauseCard
 							level={level}
-							settings={save.settings}
-							onSettings={changeSettings}
+							onOpenSettings={() => setModal("settings")}
 							onResume={resume}
 							onRestart={() => void enter(level, false)}
 							onLevels={() => {
@@ -446,7 +459,7 @@ export default function App() {
 						<SettingsCard
 							settings={save.settings}
 							onSettings={changeSettings}
-							onClose={() => setModal(null)}
+							onClose={() => setModal(screen === "play" ? "pause" : null)}
 						/>
 					)}
 					{modal === "result" && level && result && (

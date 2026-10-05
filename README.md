@@ -61,8 +61,8 @@ Goals change from level to level: tear the cloth into pieces, cut a shape free w
 
 Grab the latest build from the [releases page](https://github.com/Razee4315/rip-it/releases):
 
-- **Android**: signed arm64 APK (or the universal APK for other devices)
-- **Windows**: exe installer or portable msi
+- **Android**: signed APK for arm64 Android devices
+- **Windows**: EXE or MSI installer
 
 ## Run it yourself
 
@@ -90,9 +90,11 @@ npx tauri icon design/icon.svg --output src-tauri/icons
 
 ## Controls and performance
 
-Hold to grab, then pull firmly to rip. Small movements are safe. Enable **Gentle controls** in Settings for a larger movement allowance. **Reduce shake & flashes** disables camera shake and full-screen flashes. **Reset settings** restores the defaults without clearing stars.
+Hold to grab, then pull firmly to rip. Small movements are safe. Enable **Gentle controls** in Settings for a larger movement allowance. **Reduce flashes & motion** disables camera shake and full-screen flashes. **Reset all settings** restores the defaults without clearing stars.
 
 Every fresh cloth starts in still air and rests until you interact. Wind stays at **0** unless you raise it in Sandbox; try **0.5 m/s** for a gentle breeze. Tearing never freezes the simulation or shakes the camera. Slow motion is only enabled by the Sandbox switch. Menus and sandbox settings pause play. Rotating your device preserves the current cloth.
+
+Pause shows only Resume, Restart, Levels, and Settings. Settings are grouped into Play, Audio, and Graphics. Audio has a volume control, separate ambient sounds, and optional soft procedural music (off by default).
 
 Leave graphics on **Auto** for automatic adjustment, or choose **Low** to save battery. Fabric textures are generated when first used, and the simulation mesh is sized to keep work bounded.
 

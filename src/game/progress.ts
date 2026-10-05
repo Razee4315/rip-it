@@ -5,6 +5,9 @@ import type { LevelDef, LevelResult } from "./types";
 
 export type Settings = {
 	sound: boolean;
+	volume: number;
+	ambience: boolean;
+	music: boolean;
 	haptics: boolean;
 	gentleControls: boolean;
 	reducedMotion: boolean;
@@ -24,6 +27,9 @@ export const DEFAULT_SAVE: Save = {
 	best: {},
 	settings: {
 		sound: true,
+		volume: 0.8,
+		ambience: true,
+		music: false,
 		haptics: true,
 		quality: "auto",
 		gentleControls: false,
@@ -40,6 +46,12 @@ export function normalizeSettings(value: unknown): Settings {
 		typeof s[key] === "boolean" ? (s[key] as boolean) : (defaults[key] as boolean);
 	return {
 		sound: bool("sound"),
+		ambience: bool("ambience"),
+		music: bool("music"),
+		volume:
+			typeof s.volume === "number" && Number.isFinite(s.volume)
+				? Math.max(0, Math.min(1, s.volume))
+				: defaults.volume,
 		haptics: bool("haptics"),
 		gentleControls: bool("gentleControls"),
 		reducedMotion: bool("reducedMotion"),

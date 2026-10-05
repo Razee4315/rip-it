@@ -213,6 +213,7 @@ export class Game {
 				}
 			} else if (this.hiddenStop) {
 				this.hiddenStop = false;
+				audio.resume();
 				this.start();
 			}
 		};
@@ -328,7 +329,14 @@ export class Game {
 		const def = level.cloth;
 		const fabric = getFabric(def.fabric);
 		this.fabric = fabric;
-		this.threadCol = hexToLinear(def.dye ?? fabric.look.thread);
+		this.threadCol = hexToLinear(def.dye ?? fabric.look.warp);
+		const print = def.print;
+		const ink =
+			print?.base ?? (print?.pattern && "color" in print.pattern ? print.pattern.color : undefined);
+		if (ink && !def.dye) {
+			const tint = hexToLinear(ink);
+			for (let i = 0; i < 3; i++) this.threadCol[i] *= 0.55 + tint[i] * 0.45;
+		}
 
 		const size = this.portrait && def.tall ? def.tall : { w: def.w, h: def.h };
 		const cols = Math.max(6, Math.round(size.w / CELL));
@@ -1315,6 +1323,7 @@ export class Game {
 		let tears = 0,
 			mag = 0,
 			cuts = 0;
+		let debris = this.tier === "low" ? 8 : this.tier === "medium" ? 12 : 18;
 		const mail = c.fabric.look.metal > 0.5;
 		for (let i = 0; i < c.evN; i++) {
 			const o = i * EV_STRIDE;
@@ -1325,8 +1334,10 @@ export class Game {
 			if (type === EV_TEAR) {
 				tears++;
 				mag += ev[o + 7];
-				if (mail) {
-					for (let k = 0; k < 3; k++)
+				if (mail && debris > 0) {
+					const n = Math.min(3, debris);
+					debris -= n;
+					for (let k = 0; k < n; k++)
 						ps.emit(
 							P_SPARK,
 							x,
@@ -1342,29 +1353,30 @@ export class Game {
 							1.2,
 							1,
 						);
-				} else {
-					const n = 2 + ((Math.random() * 3) | 0);
-					for (let k = 0; k < n; k++)
-						ps.emit(
-							P_FIBER,
-							x + rand(-0.008, 0.008),
-							y + rand(-0.008, 0.008),
-							z + 0.006,
-							ev[o + 4] * rand(-0.6, 0.6) + rand(-0.5, 0.5),
-							rand(-0.2, 0.9),
-							rand(0.1, 0.7),
-							rand(0.5, 1.3),
-							rand(0.007, 0.016),
-							t[0] * rand(0.5, 0.8),
-							t[1] * rand(0.5, 0.8),
-							t[2] * rand(0.5, 0.8),
-							1,
-						);
+				} else if (!mail && debris > 0 && Math.random() < 0.55) {
+					debris--;
+					ps.emit(
+						P_FIBER,
+						x + rand(-0.008, 0.008),
+						y + rand(-0.008, 0.008),
+						z + 0.006,
+						ev[o + 4] * 0.08 + rand(-0.12, 0.12),
+						rand(-0.15, 0.3),
+						rand(0.02, 0.18),
+						rand(0.3, 0.65),
+						rand(0.002, 0.005),
+						t[0] * rand(0.5, 0.8),
+						t[1] * rand(0.5, 0.8),
+						t[2] * rand(0.5, 0.8),
+						1,
+					);
 				}
 			} else if (type === EV_CUT) {
 				cuts++;
-				if (mail)
-					for (let k = 0; k < 4; k++)
+				if (mail && debris > 0) {
+					const n = Math.min(4, debris);
+					debris -= n;
+					for (let k = 0; k < n; k++)
 						ps.emit(
 							P_SPARK,
 							x,
@@ -1380,7 +1392,8 @@ export class Game {
 							1.3,
 							1,
 						);
-				else if (Math.random() < 0.5)
+				} else if (!mail && debris > 0 && Math.random() < 0.3) {
+					debris--;
 					ps.emit(
 						P_FIBER,
 						x,
@@ -1389,13 +1402,14 @@ export class Game {
 						rand(-0.3, 0.3),
 						rand(-0.1, 0.4),
 						rand(0.1, 0.4),
-						rand(0.4, 0.9),
-						rand(0.005, 0.01),
+						rand(0.25, 0.5),
+						rand(0.002, 0.004),
 						t[0] * 0.7,
 						t[1] * 0.7,
 						t[2] * 0.7,
 						1,
 					);
+				}
 			} else if (type === EV_BURN) {
 				for (let k = 0; k < 2; k++)
 					ps.emit(

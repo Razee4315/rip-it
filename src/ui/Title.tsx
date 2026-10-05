@@ -16,11 +16,10 @@ type Props = {
 export function Title({ stars, resume, fresh, onPlay, onLevels, onSandbox, onSettings }: Props) {
 	return (
 		<div className="title">
-			<p className="title__hint">psst — the banner rips too</p>
 			<div className="title__main">
 				<button type="button" className="btn btn--primary btn--big" onClick={onPlay}>
 					<IconPlay size={26} />
-					{fresh ? "Play" : `Play ${resume}`}
+					{fresh ? "Play" : `Continue ${resume}`}
 				</button>
 				<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
 					<button type="button" className="btn btn--small" onClick={onLevels}>
@@ -29,7 +28,7 @@ export function Title({ stars, resume, fresh, onPlay, onLevels, onSandbox, onSet
 					</button>
 					<button type="button" className="btn btn--small" onClick={onSandbox}>
 						<IconInfinity size={18} />
-						Sandbox
+						Free play
 					</button>
 				</div>
 			</div>

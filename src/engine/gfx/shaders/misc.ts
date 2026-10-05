@@ -170,7 +170,12 @@ void main() {
 	} else if (vMisc.x < 2.5) {
 		// hard-edged chip (confetti, fibre, scrap)
 		a = 1.0 - smoothstep(0.85, 1.0, max(abs(vUv.x), abs(vUv.y)));
-	} else {
+	} else if (vMisc.x > 3.5) {
+  // A curved, tapered loose thread rather than a straight glowing stick.
+  float center = 0.3 * sin(vUv.y * 3.0);
+  float width = 0.55 * (1.0 - vUv.y * vUv.y);
+  a = (1.0 - smoothstep(width * 0.5, width + 0.12, abs(vUv.x - center))) * (1.0 - smoothstep(0.6, 1.0, abs(vUv.y)));
+ } else {
 		// smoke puff: billowy, uneven
 		float n = texture(uNoise, vUv * 0.22 + vMisc.y * 0.31).r;
 		a = exp(-r2 * 2.4) * smoothstep(0.15, 0.75, n + 0.35 - r2 * 0.35) * (1.0 - smoothstep(0.75, 1.0, r2));

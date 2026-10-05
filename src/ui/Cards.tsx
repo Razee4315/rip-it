@@ -3,7 +3,7 @@ import { audio } from "@/engine/audio/audio";
 import { TOOLS } from "@/engine/tools";
 import { DEFAULT_SAVE, type Settings } from "@/game/progress";
 import type { LevelDef, LevelResult } from "@/game/types";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
 	IconCheck,
 	IconCross,
@@ -11,10 +11,8 @@ import {
 	IconNext,
 	IconPlay,
 	IconRestart,
-	IconSound,
-	IconSoundOff,
+	IconSliders,
 	IconStar,
-	IconVibrate,
 	ToolIcon,
 } from "./icons";
 
@@ -89,88 +87,108 @@ type SettingsProps = {
 };
 
 export function SettingsRows({ settings, onSettings }: SettingsProps) {
-	const q = settings.quality;
-	return (
-		<div className="rows">
-			<div className="row">
-				<span className="row__label">
-					{settings.sound ? <IconSound size={20} /> : <IconSoundOff size={20} />}
-					Sound
-				</span>
-				<button
-					type="button"
-					className="switch"
-					role="switch"
-					aria-checked={settings.sound}
-					aria-label="Sound"
-					onClick={() => onSettings({ ...settings, sound: !settings.sound })}
-				/>
-			</div>
-			<div className="row">
-				<span className="row__label">
-					<IconVibrate size={20} />
-					Vibration
-				</span>
-				<button
-					type="button"
-					className="switch"
-					role="switch"
-					aria-checked={settings.haptics}
-					aria-label="Vibration"
-					onClick={() => onSettings({ ...settings, haptics: !settings.haptics })}
-				/>
-			</div>
-			{(
-				[
+	const [section, setSection] = useState<"Play" | "Audio" | "Graphics">("Play");
+	const switches =
+		section === "Play"
+			? ([
+					["haptics", "Vibration"],
 					["gentleControls", "Gentle controls"],
-					["reducedMotion", "Reduce shake & flashes"],
-				] as const
-			).map(([key, label]) => (
-				<div className="row" key={key}>
-					<span className="row__label">{label}</span>
+					["reducedMotion", "Reduce flashes & motion"],
+				] as const)
+			: ([
+					["sound", "Audio"],
+					["ambience", "Ambient sounds"],
+					["music", "Music"],
+				] as const);
+	return (
+		<>
+			<div className="settings-nav seg" role="group" aria-label="Settings category">
+				{(["Play", "Audio", "Graphics"] as const).map((name) => (
 					<button
 						type="button"
-						className="switch"
-						role="switch"
-						aria-checked={settings[key]}
-						aria-label={label}
-						onClick={() => onSettings({ ...settings, [key]: !settings[key] })}
-					/>
-				</div>
-			))}
-			<p className="settings-help">
-				Hold to grab, then pull firmly to rip. Gentle controls give you more room to move before
-				tearing.
-			</p>
-			<div className="row">
-				<span className="row__label">Graphics</span>
-				<span className="seg" role="group" aria-label="Graphics quality">
-					{(["auto", "low", "medium", "high"] as const).map((v) => (
-						<button
-							key={v}
-							type="button"
-							aria-pressed={q === v}
-							onClick={() => onSettings({ ...settings, quality: v })}
-						>
-							{v === "medium" ? "Med" : v[0].toUpperCase() + v.slice(1)}
-						</button>
-					))}
-				</span>
+						key={name}
+						aria-pressed={section === name}
+						onClick={() => setSection(name)}
+					>
+						{name}
+					</button>
+				))}
 			</div>
-			<p className="settings-help">Auto adjusts graphics for smoother play. Low saves battery.</p>
+			<div className="rows settings-panel">
+				{section !== "Graphics" &&
+					switches.map(([key, label]) => (
+						<div className="row" key={key}>
+							<span className="row__label">{label}</span>
+							<button
+								type="button"
+								className="switch"
+								role="switch"
+								aria-checked={settings[key]}
+								aria-label={label}
+								onClick={() => onSettings({ ...settings, [key]: !settings[key] })}
+							/>
+						</div>
+					))}
+				{section === "Play" && (
+					<p className="settings-help">
+						Hold to grab, then pull firmly to rip. Gentle controls allow a longer pull before
+						tearing.
+					</p>
+				)}
+				{section === "Audio" && (
+					<>
+						<label className="volume-control">
+							Volume <output>{Math.round(settings.volume * 100)}%</output>
+							<input
+								type="range"
+								min="0"
+								max="100"
+								step="5"
+								value={Math.round(settings.volume * 100)}
+								onChange={(e) => onSettings({ ...settings, volume: Number(e.target.value) / 100 })}
+							/>
+						</label>
+						<p className="settings-help">
+							Music is optional. Keep it off to focus on the fabric and surrounding sounds.
+						</p>
+					</>
+				)}
+				{section === "Graphics" && (
+					<>
+						<span className="row__label">Quality</span>
+						<div className="seg settings-quality" role="group" aria-label="Graphics quality">
+							{(["auto", "low", "medium", "high"] as const).map((v) => (
+								<button
+									type="button"
+									key={v}
+									aria-pressed={settings.quality === v}
+									onClick={() => onSettings({ ...settings, quality: v })}
+								>
+									{v === "medium" ? "Medium" : v[0].toUpperCase() + v.slice(1)}
+								</button>
+							))}
+						</div>
+						<p className="settings-help">
+							Auto balances detail and smooth play for your device. Low reduces effects and saves
+							battery.
+						</p>
+					</>
+				)}
+			</div>
 			<button
 				type="button"
-				className="btn btn--small"
+				className="btn btn--small settings-reset"
 				onClick={() => onSettings({ ...DEFAULT_SAVE.settings })}
 			>
-				Reset settings
+				Reset all settings
 			</button>
-		</div>
+		</>
 	);
 }
 
 // ── pause ───────────────────────────────────────────────────────
-type PauseProps = SettingsProps & {
+type PauseProps = {
+	onOpenSettings: () => void;
 	level: LevelDef;
 	onResume: () => void;
 	onRestart: () => void;
@@ -180,8 +198,7 @@ type PauseProps = SettingsProps & {
 
 export function PauseCard({
 	level,
-	settings,
-	onSettings,
+	onOpenSettings,
 	onResume,
 	onRestart,
 	onLevels,
@@ -211,7 +228,10 @@ export function PauseCard({
 						{sandbox ? "Menu" : "Levels"}
 					</button>
 				</div>
-				<SettingsRows settings={settings} onSettings={onSettings} />
+				<button type="button" className="btn btn--wide pause-settings" onClick={onOpenSettings}>
+					<IconSliders size={18} />
+					Settings
+				</button>
 			</div>
 		</div>
 	);

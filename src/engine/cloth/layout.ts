@@ -56,7 +56,7 @@ export function buildLayout(
 
 	if (mount.kind === "rod" || mount.kind === "line" || mount.kind === "corners") {
 		const n = mount.kind === "rod" ? mount.clips : mount.kind === "line" ? mount.pegs : 2;
-		const g = mount.kind === "rod" ? mount.gather : mount.kind === "corners" ? mount.gather : 0.985;
+		const g = mount.kind === "rod" ? mount.gather : mount.kind === "corners" ? mount.gather : 1;
 		const clipCols: number[] = [];
 		for (let k = 0; k < n; k++) clipCols.push(Math.round((k * cols) / (n - 1)));
 		const wG = width * g;

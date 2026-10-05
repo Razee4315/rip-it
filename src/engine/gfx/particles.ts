@@ -147,10 +147,10 @@ export class Particles {
 						drag = kind === P_MIST ? 3 : 0.2;
 						break;
 					case P_FIBER:
-						g = -1.6;
-						drag = 3.2;
+						g = -2.8;
+						drag = 4.5;
 						wind = 1;
-						d[o + VX] += Math.sin(time * 5 + d[o + ROT] * 9) * 0.8 * dt;
+						d[o + VX] += Math.sin(time * 5 + d[o + ROT] * 9) * 0.15 * dt;
 						break;
 					case P_MOTE:
 						drag = 0.6;
@@ -255,9 +255,9 @@ export class Particles {
 					a *= 1 - t;
 					break;
 				case P_FIBER:
-					shape = 2;
-					aspect = 0.14;
-					a *= Math.min(1, (1 - t) * 3);
+					shape = 4;
+					aspect = 0.3;
+					a *= (1 - t) ** 1.2;
 					break;
 				case P_MOTE:
 					a *= Math.sin(t * Math.PI) * (0.55 + 0.45 * Math.sin(rot * 2));

@@ -1,9 +1,10 @@
 import { DEFAULT_SANDBOX, sandboxLevel, titleLevel } from "@/game/sandbox";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Game } from "./Game";
-import { Cloth, EV_STRIDE, EV_TEAR } from "./cloth/Cloth";
+import { Cloth, EV_CUT, EV_STRIDE, EV_TEAR } from "./cloth/Cloth";
 import { FABRICS } from "./cloth/fabrics";
 import { buildLayout } from "./cloth/layout";
+import { P_FIBER, P_SPARK } from "./gfx/particles";
 
 vi.mock("./audio/audio", () => ({ audio: new Proxy({}, { get: () => vi.fn() }) }));
 vi.mock("./gfx/prints", async (original) => ({
@@ -134,6 +135,31 @@ describe("game controls", () => {
 			expect(frameState?.shakeY).toBe(0);
 		}
 	});
+
+	it.each(["cotton", "mail"] as const)(
+		"dense %s tears and cuts have a bounded cosmetic cost",
+		(fabric) => {
+			game.load(sandboxLevel({ ...DEFAULT_SANDBOX, fabric }));
+			game.setQuality("low");
+			const c = game.cloth!;
+			const emit = vi.spyOn(game.particles, "emit");
+			vi.spyOn(Math, "random").mockReturnValue(0.25);
+			vi.spyOn(performance, "now").mockReturnValue(0);
+			game.start();
+			c.evN = 120;
+			for (let i = 0; i < c.evN; i++) {
+				c.ev[i * EV_STRIDE] = i % 2 ? EV_TEAR : EV_CUT;
+				c.ev[i * EV_STRIDE + 7] = 1;
+			}
+			tick(30);
+			const debris = emit.mock.calls.filter((args) => args[0] === P_FIBER || args[0] === P_SPARK);
+			expect(debris.length).toBeGreaterThan(0);
+			expect(debris.length).toBeLessThanOrEqual(8);
+			expect(c.evN).toBe(0);
+			for (const args of debris)
+				if (args[0] === P_FIBER) expect(args[8]).toBeLessThanOrEqual(0.005);
+		},
+	);
 
 	it("rotation preserves the same cloth and its cuts", () => {
 		game.resize(1200, 800);

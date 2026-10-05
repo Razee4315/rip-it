@@ -25,6 +25,10 @@ export function Dock({ tools, tool, left, toast, onTool }: Props) {
 					{toast.text}
 				</div>
 			)}
+			<p className="dock__label">
+				<b>{TOOLS[tool].name}</b>
+				<span>{TOOLS[tool].hint}</span>
+			</p>
 			<nav className="dock__row" aria-label="Tools">
 				{tools.map((t) => {
 					const l = left[t];
@@ -36,6 +40,7 @@ export function Dock({ tools, tool, left, toast, onTool }: Props) {
 							className={`tool${t === tool ? " tool--on" : ""}${empty ? " tool--empty" : ""}`}
 							aria-label={TOOLS[t].name}
 							aria-pressed={t === tool}
+							disabled={empty}
 							onClick={() => onTool(t)}
 						>
 							<ToolIcon tool={t} size={26} />

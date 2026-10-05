@@ -16,9 +16,9 @@ type Props = {
 /** Free play controls: pick a fabric, hang it somewhere, change the weather. */
 export function SandboxSheet({ opts, dials, onOpts, onDials, onFresh, onClose }: Props) {
 	return (
-		<div className="sheet" role="dialog" aria-label="Sandbox settings">
+		<div className="sheet" role="dialog" aria-modal="true" aria-label="Free play settings">
 			<div className="sheet__head">
-				<h2>Sandbox</h2>
+				<h2>Free play</h2>
 				<button type="button" className="btn btn--small btn--primary" onClick={onFresh}>
 					<IconRestart size={18} />
 					Fresh cloth

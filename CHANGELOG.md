@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — 2026-10-06
+
+- Fix objective text overlapping progress. Frame the cloth using measured HUD and tool-dock bounds, including narrow and landscape screens.
+- Simplify the home screen and pause menu. Group settings into Play, Audio, and Graphics; return to pause after changing settings.
+- Add persistent tool guidance, disabled exhausted tools, safe scrolling for short screens, keyboard focus containment, and a startup status.
+- Remove the washing-line fabric's preloaded fold so fresh towels hang evenly. Preserve calm startup and uninterrupted tearing.
+- Replace oversized tear fibers with smaller, curved, fabric-tinted threads that fall and fade quickly. Cap tear/cut debris per frame by graphics quality.
+- Add master volume, independent ambience, and optional soft procedural music (off by default). Lower background noise, disconnect finished audio nodes, and resume sound after backgrounding.
+- Preserve existing saves and validate new audio preferences. Add dense-debris and audio lifecycle regression tests.
+- Label the Android release correctly as arm64; remove the duplicate APK previously labeled universal.
+
 ## 1.1.1 — 2026-10-05
 
 - Fix bending corrections injecting energy into untouched cloth even with wind off.

@@ -10,11 +10,17 @@ type Loop = { src: AudioBufferSourceNode; gain: GainNode; filter: BiquadFilterNo
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
-class AudioEngine {
+export class AudioEngine {
 	private ctx: AudioContext | null = null;
 	private master: GainNode | null = null;
 	private noise: AudioBuffer | null = null;
 	private muted = false;
+	private volume = 0.8;
+	private ambience = true;
+	private music = false;
+	private musicBus: GainNode | null = null;
+	private nextNote = 0;
+	private note = 0;
 	private lastGrain = 0;
 	private loops: Record<string, Loop> = {};
 	private ambTimer: ReturnType<typeof setInterval> | null = null;
@@ -35,7 +41,7 @@ class AudioEngine {
 				comp.attack.value = 0.003;
 				comp.release.value = 0.2;
 				const master = ctx.createGain();
-				master.gain.value = this.muted ? 0 : 0.7;
+				master.gain.value = this.muted ? 0 : 0.7 * this.volume;
 				master.connect(comp);
 				comp.connect(ctx.destination);
 				const len = ctx.sampleRate * 2;
@@ -44,6 +50,9 @@ class AudioEngine {
 				for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 				this.ctx = ctx;
 				this.master = master;
+				this.musicBus = ctx.createGain();
+				this.musicBus.gain.value = this.music ? 1 : 0;
+				this.musicBus.connect(master);
 				this.noise = buf;
 				if (this.env) this.startAmbience();
 			} catch {
@@ -56,7 +65,40 @@ class AudioEngine {
 	setMuted(m: boolean) {
 		this.muted = m;
 		if (this.master && this.ctx)
-			this.master.gain.setTargetAtTime(m ? 0 : 0.7, this.ctx.currentTime, 0.05);
+			this.master.gain.setTargetAtTime(m ? 0 : 0.7 * this.volume, this.ctx.currentTime, 0.05);
+	}
+
+	configure(s: { sound: boolean; volume: number; ambience: boolean; music: boolean }) {
+		this.volume = Math.max(0, Math.min(1, s.volume));
+		this.ambience = s.ambience;
+		this.music = s.music;
+		this.setMuted(!s.sound);
+		if (this.ctx) {
+			this.musicBus?.gain.setTargetAtTime(this.music ? 1 : 0, this.ctx.currentTime, 0.15);
+			this.startAmbience();
+		}
+	}
+
+	dispose() {
+		if (this.ambTimer) clearInterval(this.ambTimer);
+		this.ambTimer = null;
+		for (const loop of Object.values(this.loops)) {
+			loop.src.stop();
+			loop.src.disconnect();
+			loop.filter.disconnect();
+			loop.gain.disconnect();
+		}
+		this.loops = {};
+		if (this.ctx) void this.ctx.close().catch(() => {});
+		this.ctx = null;
+		this.master = null;
+		this.musicBus = null;
+		this.noise = null;
+		this.nextNote = 0;
+	}
+
+	resume() {
+		if (this.ctx?.state === "suspended") void this.ctx.resume().catch(() => {});
 	}
 
 	suspend() {
@@ -94,10 +136,16 @@ class AudioEngine {
 		src.connect(f).connect(g).connect(master);
 		src.start(t0, Math.random() * 1.5);
 		src.stop(t0 + o.d + 0.03);
+		src.onended = () => {
+			src.disconnect();
+			f.disconnect();
+			g.disconnect();
+		};
 	}
 
 	private tone(o: {
 		f: number;
+		music?: boolean;
 		fTo?: number;
 		w?: OscillatorType;
 		g: number;
@@ -116,9 +164,13 @@ class AudioEngine {
 		g.gain.setValueAtTime(0.0001, t0);
 		g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.g), t0 + (o.a ?? 0.005));
 		g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.d);
-		osc.connect(g).connect(master);
+		osc.connect(g).connect(o.music && this.musicBus ? this.musicBus : master);
 		osc.start(t0);
 		osc.stop(t0 + o.d + 0.03);
+		osc.onended = () => {
+			osc.disconnect();
+			g.disconnect();
+		};
 	}
 
 	private loop(
@@ -330,7 +382,7 @@ class AudioEngine {
 		const env = this.env;
 		this.setLoop(
 			"room",
-			env === "forge" ? 0.05 : env ? 0.014 : 0,
+			this.ambience ? (env === "forge" ? 0.025 : env ? 0.008 : 0) : 0,
 			"lowpass",
 			env === "forge" ? 180 : 320,
 			0.3,
@@ -339,6 +391,13 @@ class AudioEngine {
 		if (!env) return;
 		this.ambTimer = setInterval(() => {
 			if (this.muted || !this.ctx || this.ctx.state !== "running") return;
+			if (this.music && this.ctx.currentTime >= this.nextNote) {
+				const notes = [220, 329.63, 293.66, 261.63, 220, 261.63, 329.63, 196];
+				const f = notes[this.note++ % notes.length];
+				this.tone({ f, g: 0.055, d: 2.8, a: 0.16, music: true });
+				this.tone({ f: f / 2, g: 0.025, d: 3.2, a: 0.3, music: true });
+				this.nextNote = this.ctx.currentTime + 2.4;
+			}
 			// fire crackle rides on top of the loop
 			if (this.fireLevel > 0.01) {
 				const n = 1 + Math.round(this.fireLevel * 5);
@@ -351,6 +410,7 @@ class AudioEngine {
 						delay: rnd(0, 0.24),
 					});
 			}
+			if (!this.ambience) return;
 			const r = Math.random();
 			if (env === "backyard" && r < 0.09) {
 				// a bird: a few quick downward chirps
