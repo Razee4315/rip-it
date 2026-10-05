@@ -1,7 +1,7 @@
 /** The modal cards: level briefing, pause, win, lose. */
 import { audio } from "@/engine/audio/audio";
 import { TOOLS } from "@/engine/tools";
-import type { Settings } from "@/game/progress";
+import { DEFAULT_SAVE, type Settings } from "@/game/progress";
 import type { LevelDef, LevelResult } from "@/game/types";
 import { useEffect } from "react";
 import {
@@ -120,6 +120,28 @@ export function SettingsRows({ settings, onSettings }: SettingsProps) {
 					onClick={() => onSettings({ ...settings, haptics: !settings.haptics })}
 				/>
 			</div>
+			{(
+				[
+					["gentleControls", "Gentle controls"],
+					["reducedMotion", "Reduce shake & flashes"],
+				] as const
+			).map(([key, label]) => (
+				<div className="row" key={key}>
+					<span className="row__label">{label}</span>
+					<button
+						type="button"
+						className="switch"
+						role="switch"
+						aria-checked={settings[key]}
+						aria-label={label}
+						onClick={() => onSettings({ ...settings, [key]: !settings[key] })}
+					/>
+				</div>
+			))}
+			<p className="settings-help">
+				Hold to grab, then pull firmly to rip. Gentle controls give you more room to move before
+				tearing.
+			</p>
 			<div className="row">
 				<span className="row__label">Graphics</span>
 				<span className="seg" role="group" aria-label="Graphics quality">
@@ -135,6 +157,14 @@ export function SettingsRows({ settings, onSettings }: SettingsProps) {
 					))}
 				</span>
 			</div>
+			<p className="settings-help">Auto adjusts graphics for smoother play. Low saves battery.</p>
+			<button
+				type="button"
+				className="btn btn--small"
+				onClick={() => onSettings({ ...DEFAULT_SAVE.settings })}
+			>
+				Reset settings
+			</button>
 		</div>
 	);
 }

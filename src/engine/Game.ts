@@ -45,7 +45,7 @@ import { TAU, clamp, compose, lookAt, mat4, perspective, rand } from "./math";
 import { TOOLS, type ToolId } from "./tools";
 
 /** every cloth uses the same mesh density so every level tears the same way */
-const CELL = 0.036;
+const CELL = 0.042;
 const FOV = (30 * Math.PI) / 180;
 /** most substeps one frame may run: enough to cover a 30 fps frame in full */
 const MAX_STEPS = 26;
@@ -132,7 +132,6 @@ export class Game {
 	private gravScale = 1;
 	private frameMs = 16;
 	private lastInput = 0;
-	private skipped = false;
 	private pauseTick = 0;
 	private hiddenStop = false;
 	private slowFrames = 0;
@@ -177,6 +176,8 @@ export class Game {
 	private torchPos: [number, number, number] = [0, 0, 0];
 	private moteTarget = 46;
 	private haptics = true;
+	private gentleControls = false;
+	private reducedMotion = false;
 	private unbind: Array<() => void> = [];
 	private frame: Frame = {
 		time: 0,
@@ -203,6 +204,7 @@ export class Game {
 		this.bindInput();
 		const vis = () => {
 			if (document.hidden) {
+				this.releaseAll();
 				if (this.running) {
 					this.hiddenStop = true;
 					this.stop();
@@ -246,11 +248,19 @@ export class Game {
 
 	setPaused(p: boolean) {
 		this.paused = p;
+		this.acc = 0;
+		this.last = performance.now();
 		if (p) this.releaseAll();
 	}
 
 	setHaptics(on: boolean) {
 		this.haptics = on;
+	}
+
+	setControls(gentle: boolean, reducedMotion: boolean) {
+		this.gentleControls = gentle;
+		this.reducedMotion = reducedMotion;
+		if (this.cloth) this.cloth.pullThreshold = gentle ? 0.18 : 0.1;
 	}
 
 	setQuality(tier: QualityTier | "auto") {
@@ -264,7 +274,7 @@ export class Game {
 
 	/** Sandbox dials. */
 	setWindScale(v: number) {
-		this.windScale = v;
+		this.windScale = Number.isFinite(v) ? clamp(v, 0, 100) : 0;
 		this.applyWind();
 	}
 	setGravityScale(v: number) {
@@ -290,14 +300,13 @@ export class Game {
 	}
 
 	resize(cssW: number, cssH: number) {
-		const wasPortrait = this.portrait;
 		this.cssW = Math.max(1, cssW);
 		this.cssH = Math.max(1, cssH);
 		this.portrait = this.cssW / this.cssH < 0.85;
 		this.renderer.resize(this.cssW, this.cssH, window.devicePixelRatio || 1);
-		// turning the device changes the cloth's proportions: hang a fresh one
-		if (this.level && wasPortrait !== this.portrait && this.cloth) this.load(this.level, false);
-		else this.frameCamera();
+		// Reframe the existing cloth; rotation must not erase a run or sandbox edits.
+		this.releaseAll();
+		this.frameCamera();
 	}
 
 	private fx(pattern: number | number[]) {
@@ -340,6 +349,7 @@ export class Game {
 			floorY: 0,
 			wallZ: env.wallZ,
 		});
+		cloth.pullThreshold = this.gentleControls ? 0.18 : 0.1;
 		cloth.gravity = -9.81 * this.gravScale;
 		this.cloth = cloth;
 
@@ -469,7 +479,7 @@ export class Game {
 	private applyWind() {
 		const w = this.env.wind;
 		const s = this.windScale;
-		this.wind.set(w[0] * s, 0, w[1] * s, w[2], w[3] * Math.min(2, 0.5 + s * 0.5));
+		this.wind.set(w[0] * s, 0, w[1] * s, w[2], w[3] * Math.min(2, s));
 		this.particles.windX = w[0] * s * 0.35;
 		this.particles.windZ = w[1] * s * 0.35;
 	}
@@ -522,7 +532,7 @@ export class Game {
 		//  · never draw faster than 60 fps, whatever the display refresh
 		//  · a paused game redraws a few times a second
 		//  · when nothing is being touched and nothing is burning, drop to 30 fps
-		if (now - this.last < 10.5) return;
+		if (now - this.last < 1000 / 60 - 0.5) return;
 		if (this.paused && ++this.pauseTick % 12 !== 0) {
 			this.last = now;
 			return;
@@ -536,11 +546,7 @@ export class Game {
 			this.doneTimer >= 0 ||
 			Math.abs(this.fade - this.fadeTo) > 0.01 ||
 			this.shake > 0;
-		if (!busy && !this.skipped) {
-			this.skipped = true;
-			return;
-		}
-		this.skipped = false;
+		if (!busy && now - this.last < 1000 / 30 - 0.5) return;
 		const raw = now - this.last;
 		this.last = now;
 		const dt = Math.min(0.05, raw / 1000);
@@ -604,10 +610,10 @@ export class Game {
 		this.boomLight *= 0.001 ** dt;
 		const f = this.frame;
 		f.time = this.time;
-		f.shakeX = this.shake ? rand(-this.shake, this.shake) : 0;
-		f.shakeY = this.shake ? rand(-this.shake, this.shake) : 0;
+		f.shakeX = !this.reducedMotion && this.shake ? rand(-this.shake, this.shake) : 0;
+		f.shakeY = !this.reducedMotion && this.shake ? rand(-this.shake, this.shake) : 0;
 		f.fade = clamp(this.fade, 0, 1);
-		f.flash = this.flash;
+		f.flash = this.reducedMotion ? 0 : this.flash;
 		f.flicker = this.env.flicker
 			? 1 +
 				0.16 * Math.sin(this.time * 11) * Math.sin(this.time * 4.3) +
@@ -745,27 +751,36 @@ export class Game {
 			this.ptrs.delete(e.pointerId);
 			this.toolUp(p);
 		};
+		const cancel = (e: PointerEvent) => {
+			const p = this.ptrs.get(e.pointerId);
+			if (!p) return;
+			this.ptrs.delete(e.pointerId);
+			this.toolUp(p, true);
+		};
 		const ctx = (e: Event) => e.preventDefault();
 		const blur = () => this.releaseAll();
 		cv.addEventListener("pointerdown", down);
 		cv.addEventListener("pointermove", move);
 		cv.addEventListener("pointerup", up);
-		cv.addEventListener("pointercancel", up);
+		cv.addEventListener("pointercancel", cancel);
+		cv.addEventListener("lostpointercapture", cancel);
 		cv.addEventListener("contextmenu", ctx);
 		window.addEventListener("blur", blur);
 		this.unbind.push(
 			() => cv.removeEventListener("pointerdown", down),
 			() => cv.removeEventListener("pointermove", move),
 			() => cv.removeEventListener("pointerup", up),
-			() => cv.removeEventListener("pointercancel", up),
+			() => cv.removeEventListener("pointercancel", cancel),
+			() => cv.removeEventListener("lostpointercapture", cancel),
 			() => cv.removeEventListener("contextmenu", ctx),
 			() => window.removeEventListener("blur", blur),
 		);
 	}
 
 	private releaseAll() {
-		for (const p of this.ptrs.values()) this.toolUp(p, true);
+		const pointers = [...this.ptrs.values()];
 		this.ptrs.clear();
+		for (const p of pointers) this.toolUp(p, true);
 	}
 
 	/** World-space ray through a screen point. */
@@ -842,7 +857,7 @@ export class Game {
 				if (!real) {
 					// forgiving grab: a near miss still takes hold of the closest cloth
 					this.project();
-					const n = c.pickScreen(p.x, p.y, 34);
+					const n = c.pickScreen(p.x, p.y, 20);
 					if (n >= 0) {
 						this.hit[0] = c.pos[n * 3];
 						this.hit[1] = c.pos[n * 3 + 1];

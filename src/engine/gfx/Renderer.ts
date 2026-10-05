@@ -113,6 +113,7 @@ export class Renderer {
 	private meshes: Record<MeshKind, Mesh>;
 	private noiseTex: WebGLTexture;
 	private weaveTex: WebGLTexture[] = [];
+	private pWeave: Program | null = null;
 	private printTex: WebGLTexture;
 	private artTex: WebGLTexture | null = null;
 
@@ -206,7 +207,6 @@ export class Renderer {
 			torus: torusMesh(gl),
 		};
 		this.noiseTex = this.makeNoise();
-		this.makeWeaves();
 		// 1×1 white until a real print arrives
 		this.printTex = texture(
 			gl,
@@ -313,17 +313,18 @@ export class Renderer {
 		return tex;
 	}
 
-	private makeWeaves() {
+	private makeWeave(kind: number) {
+		if (this.weaveTex[kind]) return;
 		const gl = this.gl;
-		const p = program(gl, "weave", FULLSCREEN_VS, WEAVE_FS);
+		const p = this.pWeave ?? (this.pWeave = program(gl, "weave", FULLSCREEN_VS, WEAVE_FS));
 		const N = 512;
 		gl.useProgram(p.prog);
 		gl.disable(gl.DEPTH_TEST);
 		gl.disable(gl.BLEND);
 		gl.viewport(0, 0, N, N);
-		for (let k = 0; k < 8; k++) {
+		{
 			const t = target(gl, N, N, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR_MIPMAP_LINEAR);
-			gl.uniform1i(p.u.uKind, k);
+			gl.uniform1i(p.u.uKind, kind);
 			gl.drawArrays(gl.TRIANGLES, 0, 3);
 			gl.bindTexture(gl.TEXTURE_2D, t.tex);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
@@ -331,10 +332,9 @@ export class Renderer {
 			gl.generateMipmap(gl.TEXTURE_2D);
 			this.setAniso();
 			gl.deleteFramebuffer(t.fbo);
-			this.weaveTex.push(t.tex);
+			this.weaveTex[kind] = t.tex;
 		}
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		gl.deleteProgram(p.prog);
 	}
 
 	private setAniso() {
@@ -564,6 +564,7 @@ export class Renderer {
 	setCloth(cloth: Cloth | null, print: HTMLCanvasElement | null, dye?: string) {
 		const gl = this.gl;
 		this.cloth = cloth;
+		if (cloth) this.makeWeave(cloth.fabric.look.weave);
 		this.fabric = cloth ? cloth.fabric : null;
 		if (cloth) {
 			const lk = cloth.fabric.look;

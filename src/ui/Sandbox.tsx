@@ -102,12 +102,13 @@ export function SandboxSheet({ opts, dials, onOpts, onDials, onFresh, onClose }:
 
 				<section className="group">
 					<h3 className="eyebrow">World</h3>
+					<p className="settings-help">0 is still air. Try 0.5 for a light breeze.</p>
 					<label className="slider">
 						Wind m/s
 						<input
 							type="range"
 							min={0}
-							max={8}
+							max={5}
 							step={0.1}
 							value={dials.wind}
 							onChange={(e) => onDials({ ...dials, wind: Number(e.target.value) })}

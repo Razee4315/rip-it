@@ -100,8 +100,8 @@ export function sandboxLevel(o: SandboxOpts): LevelDef {
 			gap: flag ? 0.55 : o.mount === "frame" ? 0.3 : undefined,
 		},
 		tools: ALL_TOOLS,
-		// a flag wants about 4.5 m/s, whatever breeze the place normally has
-		wind: flag ? 4.5 / Math.abs(ENVS[o.env].wind[0]) : 1,
+		// a flag wants about 1.5 m/s, whatever breeze the place normally has
+		wind: flag ? 1.5 / Math.abs(ENVS[o.env].wind[0]) : 1,
 		objective: { type: "sandbox" },
 		stars: [NONE, NONE],
 	};

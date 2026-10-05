@@ -57,6 +57,10 @@ export type Grab = {
 	tx: number;
 	ty: number;
 	tz: number;
+	/** Original contact: wind and a stationary hold must never arm tearing. */
+	sx: number;
+	sy: number;
+	sz: number;
 	/** how far the hand is from where it wants to be (m) — drives creaks and haptics */
 	strain: number;
 };
@@ -156,6 +160,8 @@ export class Cloth {
 	colliders: Collider[];
 	/** per-edge tension the hand can apply */
 	handForce = 2600;
+	/** Metres of deliberate hand travel before a pull can start a rip. */
+	pullThreshold = 0.1;
 	bendOn = true;
 	/** when false nothing tears (settling, cutscenes) */
 	tearOn = true;
@@ -932,7 +938,7 @@ export class Cloth {
 		const { pos, prev, vel, acc, im, alive } = this;
 		const np = this.np;
 		const g = this.gravity;
-		const damp = Math.exp(-this.fabric.damping * dt);
+		const damp = Math.exp(-(this.fabric.damping + 1.2) * dt);
 		this.time += dt;
 		this.stepN++;
 
@@ -980,7 +986,7 @@ export class Cloth {
 				if (d > far) far = d;
 				if (d < 1e-7) continue;
 				// a light tug is gentle; hauling the pointer far past the cloth is a real yank
-				const ramp = d > 0.25 ? 1 : 0.35 + d * 2.6;
+				const ramp = 0.08 + 0.92 * Math.min(1, d / 0.25) ** 2;
 				const maxc = this.handForce * ramp * im[p] * dt * dt * wg;
 				let c = d * 0.5 * wg;
 				if (c > maxc) c = maxc;
@@ -1073,7 +1079,11 @@ export class Cloth {
 		// Cloth only rips because of something done to it: while a hand is pulling, or for a
 		// moment after a cut, a blast, a burn or another rip. Wind and weight alone never start one.
 		if (this.gate > 0) this.gate -= dt;
-		if (this.tearOn && this.stepN % TEAR_EVERY === 0 && (this.gate > 0 || this.grabs.length > 0))
+		if (
+			this.tearOn &&
+			this.stepN % TEAR_EVERY === 0 &&
+			(this.gate > 0 || this.grabs.some((g) => this.isPulling(g)))
+		)
 			this.tearPass();
 	}
 
@@ -1137,6 +1147,10 @@ export class Cloth {
 		}
 	}
 
+	private isPulling(g: Grab): boolean {
+		return Math.hypot(g.tx - g.sx, g.ty - g.sy, g.tz - g.sz) > this.pullThreshold;
+	}
+
 	/** Is the particle at array offset i within reach of a hand holding the cloth? */
 	private nearHand(i: number): boolean {
 		const pos = this.pos;
@@ -1144,6 +1158,7 @@ export class Cloth {
 			y = pos[i + 1],
 			z = pos[i + 2];
 		for (let g = 0; g < this.grabs.length; g++) {
+			if (!this.isPulling(this.grabs[g])) continue;
 			const q = this.grabs[g].idx[0] * 3;
 			const dx = pos[q] - x,
 				dy = pos[q + 1] - y,
@@ -1423,6 +1438,9 @@ export class Cloth {
 			tx: x,
 			ty: y,
 			tz: z,
+			sx: x,
+			sy: y,
+			sz: z,
 			strain: 0,
 		};
 		const r2 = radius * radius;
@@ -1979,6 +1997,9 @@ export class Cloth {
 				for (let i = 0; i < this.np * 3; i++) v[i] *= 0.97;
 			}
 		}
+		this.vel.fill(0, 0, this.np * 3);
+		this.prev.set(this.pos.subarray(0, this.np * 3));
+		this.gate = 0;
 		this.tearOn = tear;
 		this.evN = 0;
 		this.time = 0;

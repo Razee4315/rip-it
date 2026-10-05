@@ -20,10 +20,21 @@ jobs:
     outputs:
       should_release: ${{ steps.bump.outputs.should_release }}
       version: ${{ steps.bump.outputs.version }}
+      commit: ${{ steps.commit.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
 
       - name: Check for changes and bump version
         id: bump
@@ -57,6 +68,9 @@ jobs:
             echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           fi
 
+      - id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   desktop:
     name: Windows installer
     needs: check-and-bump
@@ -65,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.check-and-bump.outputs.commit }}
 
       - uses: dtolnay/rust-toolchain@stable
 

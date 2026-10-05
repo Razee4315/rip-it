@@ -6,6 +6,8 @@ import type { LevelDef, LevelResult } from "./types";
 export type Settings = {
 	sound: boolean;
 	haptics: boolean;
+	gentleControls: boolean;
+	reducedMotion: boolean;
 	quality: "auto" | "low" | "medium" | "high";
 };
 
@@ -20,8 +22,31 @@ export type Save = {
 export const DEFAULT_SAVE: Save = {
 	stars: {},
 	best: {},
-	settings: { sound: true, haptics: true, quality: "auto" },
+	settings: {
+		sound: true,
+		haptics: true,
+		quality: "auto",
+		gentleControls: false,
+		reducedMotion: false,
+	},
 };
+
+/** Accept old saves, and fall back safely if a stored setting is invalid. */
+export function normalizeSettings(value: unknown): Settings {
+	const defaults = DEFAULT_SAVE.settings;
+	if (!value || typeof value !== "object") return { ...defaults };
+	const s = value as Record<string, unknown>;
+	const bool = (key: keyof Settings) =>
+		typeof s[key] === "boolean" ? (s[key] as boolean) : (defaults[key] as boolean);
+	return {
+		sound: bool("sound"),
+		haptics: bool("haptics"),
+		gentleControls: bool("gentleControls"),
+		reducedMotion: bool("reducedMotion"),
+		quality:
+			s.quality === "low" || s.quality === "medium" || s.quality === "high" ? s.quality : "auto",
+	};
+}
 
 /** Levels of a world that must be finished before the next world opens. */
 export const WORLD_GATE = 4;
@@ -33,7 +58,7 @@ export async function loadSave(): Promise<Save> {
 	return {
 		stars: { ...(s?.stars ?? {}) },
 		best: { ...(s?.best ?? {}) },
-		settings: { ...DEFAULT_SAVE.settings, ...(s?.settings ?? {}) },
+		settings: normalizeSettings(s?.settings),
 	};
 }
 

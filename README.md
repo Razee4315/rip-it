@@ -88,6 +88,16 @@ The app icons in `src-tauri/icons` are generated from one vector source. CI does
 npx tauri icon design/icon.svg --output src-tauri/icons
 ```
 
+## Controls and performance
+
+Hold to grab, then pull firmly to rip. Small movements are safe. Enable **Gentle controls** in Settings for a larger movement allowance. **Reduce shake & flashes** disables camera shake and full-screen flashes. **Reset settings** restores the defaults without clearing stars.
+
+Sandbox starts with a light breeze. Set wind to **0** for still air, or try **0.5 m/s** for a gentle breeze. Menus and sandbox settings pause play. Rotating your device preserves the current cloth.
+
+Leave graphics on **Auto** for automatic adjustment, or choose **Low** to save battery. Fabric textures are generated when first used, and the simulation mesh is sized to keep work bounded.
+
+See [CHANGELOG.md](CHANGELOG.md) for release changes.
+
 ## Under the hood
 
 Tauri 2, React 18, TypeScript, Vite. No game engine and no image or sound files: every texture, backdrop and sound effect is generated in code.

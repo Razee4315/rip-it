@@ -204,6 +204,25 @@ describe("cloth topology", () => {
 });
 
 describe("cloth behaviour", () => {
+	it.each(["cotton", "silk", "paper"] as const)(
+		"holding and gently moving %s does not rip it",
+		(id) => {
+			const c = make(FABRICS[id], 40, 28, { kind: "rod", clips: 9, gather: 0.86 }, 1.44, 1.008);
+			const wind = new Wind();
+			wind.set(0.35, 0, -0.1, 0.5, 0.25);
+			c.settle(1.1, wind);
+			const p = 18 * 41 + 20;
+			const g = c.grab(c.pos[p * 3], c.pos[p * 3 + 1], c.pos[p * 3 + 2], 0.076);
+			expect(g).not.toBeNull();
+			if (!g) return;
+			run(c, 0.5, wind);
+			g.tx += 0.02;
+			run(c, 0.5, wind);
+			expect(c.tearCount).toBe(0);
+			expect(validate(c)).toEqual([]);
+		},
+	);
+
 	it("no fabric tears or sags badly under its own weight", () => {
 		for (const id of ["silk", "cotton", "latex", "mail"] as const) {
 			const c = make(
@@ -270,6 +289,24 @@ describe("cloth behaviour", () => {
 			if (shouldTear) expect(c.tearCount, `${id} should rip`).toBeGreaterThan(3);
 			else expect(c.tearCount, `${id} should hold`).toBe(0);
 		}
+	});
+
+	it("the opening towel can be torn into two substantial pieces", () => {
+		const c = make(FABRICS.cotton, 31, 21, { kind: "line", pegs: 3 }, 31 * 0.042, 21 * 0.042);
+		c.settle(1.1, null);
+		const p = 14 * 32 + 15;
+		const g = c.grab(c.pos[p * 3], c.pos[p * 3 + 1], c.pos[p * 3 + 2], 0.088);
+		expect(g).not.toBeNull();
+		if (!g) return;
+		for (let step = 0; step < 1440; step++) {
+			g.tx = g.sx + Math.min(1, step / 360) * 0.8;
+			g.ty = g.sy - Math.min(1, step / 360) * 0.4;
+			if (step % 12 === 0) c.prepare(null);
+			c.substep();
+		}
+		c.analyze(c.initialArea * 0.035);
+		expect(c.pieces).toBeGreaterThanOrEqual(2);
+		expect(validate(c)).toEqual([]);
 	});
 
 	it("a notch lets a tough fabric rip", () => {

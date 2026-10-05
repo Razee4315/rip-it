@@ -1333,3 +1333,10 @@ input[type="range"]::-moz-range-thumb {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+.settings-help {
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--cream-2);
+	margin: 2px 0 8px;
+}

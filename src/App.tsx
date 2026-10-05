@@ -72,6 +72,7 @@ export default function App() {
 	const gameRef = useRef<Game | null>(null);
 	const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const toastId = useRef(0);
+	const transition = useRef(0);
 
 	const [fatal, setFatal] = useState<string | null>(null);
 	const [save, setSave] = useState<Save | null>(null);
@@ -118,6 +119,7 @@ export default function App() {
 			setSave(s);
 			audio.setMuted(!s.settings.sound);
 			game.setHaptics(s.settings.haptics);
+			game.setControls(s.settings.gentleControls, s.settings.reducedMotion);
 			game.setQuality(s.settings.quality);
 			try {
 				game.load(titleLevel());
@@ -129,6 +131,7 @@ export default function App() {
 		});
 		return () => {
 			alive = false;
+			transition.current++;
 			window.removeEventListener("resize", fit);
 			game.dispose();
 			gameRef.current = null;
@@ -159,6 +162,11 @@ export default function App() {
 		};
 	});
 
+	// Menus and configuration must not consume tool fuel or advance objectives.
+	useEffect(() => {
+		gameRef.current?.setPaused(modal !== null || sheet || screen === "levels");
+	}, [modal, sheet, screen]);
+
 	// ── keep the cloth framed between the top bar and the dock ──
 	const toolCount = level?.tools.length ?? 1;
 	useEffect(() => {
@@ -182,11 +190,15 @@ export default function App() {
 		if (!g) return;
 		setModal(null);
 		if (!keepSheet) setSheet(false);
+		const request = ++transition.current;
+		g.setPaused(true);
 		await g.fadeOut();
+		if (request !== transition.current || gameRef.current !== g) return;
 		g.setPaused(false);
 		g.setSlowmo(false);
 		g.setGravityScale(1);
 		g.load(lv);
+		g.setPaused(intro || keepSheet);
 		setLevel(lv);
 		setTool(g.tool);
 		setHud(BLANK_HUD);
@@ -201,7 +213,10 @@ export default function App() {
 		if (!g) return;
 		setModal(null);
 		setSheet(false);
+		const request = ++transition.current;
+		g.setPaused(true);
 		await g.fadeOut();
+		if (request !== transition.current || gameRef.current !== g) return;
 		g.setPaused(false);
 		g.setSlowmo(false);
 		g.setGravityScale(1);
@@ -238,6 +253,7 @@ export default function App() {
 		audio.setMuted(!s.sound);
 		if (s.sound) audio.tap();
 		gameRef.current?.setHaptics(s.haptics);
+		gameRef.current?.setControls(s.gentleControls, s.reducedMotion);
 		gameRef.current?.setQuality(s.quality);
 		setSave((prev) => {
 			if (!prev) return prev;
@@ -272,6 +288,11 @@ export default function App() {
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+			if (
+				e.target instanceof HTMLElement &&
+				e.target.matches("input, select, textarea, [contenteditable]")
+			)
+				return;
 			if (e.key === "Escape") {
 				if (sheet) setSheet(false);
 				else if (modal === "pause") resume();
@@ -285,7 +306,7 @@ export default function App() {
 				setModal(null);
 				return;
 			}
-			if (modal !== null) return;
+			if (modal !== null || sheet) return;
 			const t = ALL_TOOLS.find((id) => TOOLS[id].key === e.key);
 			if (t && level.tools.includes(t)) pickTool(t);
 			else if (e.key === "r" || e.key === "R") void enter(level, false);

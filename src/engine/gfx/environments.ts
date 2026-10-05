@@ -60,7 +60,7 @@ export const ENVS: Record<EnvId, EnvDef> = {
 		tint: [1, 1, 1],
 		flicker: false,
 		motes: "dust",
-		wind: [0.35, -0.1, 0.5, 0.25],
+		wind: [0.15, -0.02, 0.2, 0.04],
 	},
 	backyard: {
 		id: "backyard",
@@ -81,7 +81,7 @@ export const ENVS: Record<EnvId, EnvDef> = {
 		tint: [1.02, 1, 0.97],
 		flicker: false,
 		motes: "pollen",
-		wind: [1.5, -0.35, 0.65, 0.5],
+		wind: [0.65, -0.12, 0.35, 0.12],
 	},
 	theatre: {
 		id: "theatre",
@@ -103,7 +103,7 @@ export const ENVS: Record<EnvId, EnvDef> = {
 		tint: [1.02, 0.99, 0.96],
 		flicker: false,
 		motes: "dust",
-		wind: [0.12, -0.05, 0.4, 0.12],
+		wind: [0.08, -0.02, 0.15, 0.025],
 	},
 	forge: {
 		id: "forge",
@@ -124,7 +124,7 @@ export const ENVS: Record<EnvId, EnvDef> = {
 		tint: [1.03, 0.99, 0.95],
 		flicker: true,
 		motes: "embers",
-		wind: [0.25, -0.1, 0.5, 0.3],
+		wind: [0.18, -0.04, 0.25, 0.06],
 	},
 	dojo: {
 		id: "dojo",
@@ -145,6 +145,6 @@ export const ENVS: Record<EnvId, EnvDef> = {
 		tint: [1.01, 1, 0.97],
 		flicker: false,
 		motes: "petals",
-		wind: [0.5, -0.15, 0.55, 0.3],
+		wind: [0.2, -0.04, 0.25, 0.05],
 	},
 };
